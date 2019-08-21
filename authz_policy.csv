@@ -1,0 +1,6 @@
+p, *, /Chat/login, GET
+p, user, /Chat/logout, GET
+
+p, admin@e.c, /Chat/CreateNewChat/*, GET
+
+g, admin@e.c, user

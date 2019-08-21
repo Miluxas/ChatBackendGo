@@ -43,22 +43,32 @@ var users = []user{user{
 	Id:        "admin@e.c",
 	firstName: "admin",
 	lastName:  "admini",
+	username:  "admin",
+	password:  "admin",
 }, user{
 	Id:        "normal@e.c",
 	firstName: "normalUser",
 	lastName:  "lastNormal",
+	username:  "normal",
+	password:  "normal",
 }, user{
 	Id:        "kalim@e.c",
 	firstName: "karim",
 	lastName:  "Aq Mangool",
+	username:  "kalim",
+	password:  "kalim",
 }, user{
 	Id:        "solivan@e.c",
 	firstName: "solivan",
 	lastName:  "sol",
+	username:  "solivan",
+	password:  "solivan",
 }, user{
 	Id:        "ferzin@e.c",
 	firstName: "ferzin",
 	lastName:  "feriiii",
+	username:  "ferzin",
+	password:  "ferzin",
 }}
 
 type chat struct {
@@ -106,16 +116,22 @@ type user struct {
 	Id        string
 	firstName string
 	lastName  string
+	username  string
+	password  string
 }
 
 var currentUser user
 
-func SetCurrentUser(userID string) {
+//AuthenticateUser authenticate user
+func AuthenticateUser(username, password string) string {
 	for _, usr := range users {
-		if usr.Id == userID {
+		if usr.username == username && usr.password == password {
 			currentUser = usr
+			return usr.Id
 		}
 	}
+	currentUser = user{}
+	return "__"
 }
 
 func getChatFromID(chatID string) (*chat, error) {
