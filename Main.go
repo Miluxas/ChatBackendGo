@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -35,6 +36,7 @@ func main() {
 			basicAuth.POST("/SendMessageToChat", sendMessageToChat)
 			basicAuth.POST("/JoinToChat", joinToChat)
 			basicAuth.POST("/AddMemberToChat", addMemberToChat)
+			basicAuth.POST("/GetChat", getChat)
 		}
 	}
 
@@ -83,6 +85,11 @@ func checkPermission(c *gin.Context, a *casbin.Enforcer) bool {
 
 func requirePermission(c *gin.Context) {
 	c.AbortWithStatus(403)
+}
+
+func getUserID(c *gin.Context) string {
+	session := sessions.Default(c)
+	return fmt.Sprintf("%v", session.Get("user"))
 }
 
 /********************************************************************************/
@@ -157,7 +164,7 @@ func startNewPeerChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newChatID := models.StartNewPeerChat(newChat.Title, newChat.PeerUserID)
+	newChatID := models.StartNewPeerChat(newChat.Title, getUserID(c), newChat.PeerUserID)
 	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
 }
 
@@ -176,7 +183,7 @@ func startNewGroupChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newChatID := models.StartNewGroupChat(newGroupChat.Title, newGroupChat.ChatType)
+	newChatID := models.StartNewGroupChat(newGroupChat.Title, getUserID(c), newGroupChat.ChatType)
 	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
 }
 
@@ -195,7 +202,7 @@ func sendMessageToChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newID, err := models.SendMessageToChat(newMessage.ChatID, newMessage.Message)
+	newID, err := models.SendMessageToChat(newMessage.ChatID, getUserID(c), newMessage.Message)
 	if err == nil {
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Message created successfully!", "newId": newID})
 		return
@@ -219,7 +226,7 @@ func joinToChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newID, err := models.JoinToChat(chat.ChatID)
+	newID, err := models.JoinToChat(chat.ChatID, getUserID(c))
 	if err == nil {
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "joined to chat successfully!", "newId": newID})
 		return
@@ -244,9 +251,29 @@ func addMemberToChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newID, err := models.AddOtherUserToChat(newMember.ChatID, newMember.UserID)
+	newID, err := models.AddOtherUserToChat(newMember.ChatID, getUserID(c), newMember.UserID)
 	if err == nil {
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "new member added successfully!", "newId": newID})
+		return
+	}
+	{
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
+	}
+}
+
+/********************************************************************************/
+/*	get the chat as a json string												*/
+/*																				*/
+/********************************************************************************/
+func getChat(c *gin.Context) {
+	chat := chat{}
+	if err := c.ShouldBind(&chat); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	jChat, err := models.GetChat(chat.ChatID, getUserID(c))
+	if err == nil {
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat loaded successfully!", "jChat": jChat})
 		return
 	}
 	{

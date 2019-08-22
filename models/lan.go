@@ -3,6 +3,7 @@ package models
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -73,8 +74,8 @@ var users = []user{user{
 
 type chat struct {
 	id          string
-	title       string
-	createAt    time.Time
+	Title       string
+	CreateAt    time.Time
 	chatType    string
 	memberList  []member
 	messageList []message
@@ -120,18 +121,19 @@ type user struct {
 	password  string
 }
 
-var currentUser user
+//var currentUser user
 
-//AuthenticateUser authenticate user
-func AuthenticateUser(username, password string) string {
-	for _, usr := range users {
-		if usr.username == username && usr.password == password {
-			currentUser = usr
-			return usr.Id
-		}
+func createUniqID() string {
+	u := make([]byte, 16)
+	_, err := rand.Read(u)
+	if err != nil {
+		return ""
 	}
-	currentUser = user{}
-	return "__"
+
+	u[8] = (u[8] | 0x80) & 0xBF // what does this do?
+	u[6] = (u[6] | 0x40) & 0x4F // what does this do?
+
+	return hex.EncodeToString(u)
 }
 
 func getChatFromID(chatID string) (*chat, error) {
@@ -143,8 +145,20 @@ func getChatFromID(chatID string) (*chat, error) {
 	return nil, fmt.Errorf("Chat didnt find")
 }
 
+//AuthenticateUser authenticate user
+func AuthenticateUser(username, password string) string {
+	for _, usr := range users {
+		if usr.username == username && usr.password == password {
+			//currentUser = usr
+			return usr.Id
+		}
+	}
+	//currentUser = user{}
+	return "__"
+}
+
 //StartNewPeerChat start new peer to peer chat with peerUser
-func StartNewPeerChat(newChatTitle string, userID string) string {
+func StartNewPeerChat(newChatTitle, currentUserID, userID string) string {
 	newMember := member{
 		id:           createUniqID(),
 		userID:       userID,
@@ -155,7 +169,7 @@ func StartNewPeerChat(newChatTitle string, userID string) string {
 
 	ownerMember := member{
 		id:           createUniqID(),
-		userID:       currentUser.Id,
+		userID:       currentUserID,
 		addedAt:      time.Now(),
 		memberType:   MEMBER_TYPE__OWNER,
 		memberStatus: MEMBER_STATUS__NORMAL,
@@ -163,9 +177,9 @@ func StartNewPeerChat(newChatTitle string, userID string) string {
 	newChatID := createUniqID()
 	newChat := chat{
 		id:       newChatID,
-		title:    newChatTitle,
+		Title:    newChatTitle,
 		chatType: Chat_Type__Peer,
-		createAt: time.Now(),
+		CreateAt: time.Now(),
 	}
 
 	newChat.addMember(&ownerMember)
@@ -176,11 +190,11 @@ func StartNewPeerChat(newChatTitle string, userID string) string {
 }
 
 //StartNewGroupChat start new group chat
-func StartNewGroupChat(newChatTitle string, chatType string) string {
+func StartNewGroupChat(newChatTitle, currentUserID, chatType string) string {
 
 	ownerMember := member{
 		id:           createUniqID(),
-		userID:       currentUser.Id,
+		userID:       currentUserID,
 		addedAt:      time.Now(),
 		memberType:   MEMBER_TYPE__OWNER,
 		memberStatus: MEMBER_STATUS__NORMAL,
@@ -188,9 +202,9 @@ func StartNewGroupChat(newChatTitle string, chatType string) string {
 	newChatID := createUniqID()
 	newChat := chat{
 		id:       newChatID,
-		title:    newChatTitle,
+		Title:    newChatTitle,
 		chatType: chatType,
-		createAt: time.Now(),
+		CreateAt: time.Now(),
 	}
 
 	newChat.addMember(&ownerMember)
@@ -200,7 +214,7 @@ func StartNewGroupChat(newChatTitle string, chatType string) string {
 }
 
 //SendMessageToChat add message to a chat
-func SendMessageToChat(chatID string, newMessage string) (string, error) {
+func SendMessageToChat(chatID, currentUserID, newMessage string) (string, error) {
 
 	chat, err := getChatFromID(chatID)
 	if err != nil {
@@ -212,7 +226,7 @@ func SendMessageToChat(chatID string, newMessage string) (string, error) {
 		id:       newID,
 		content:  newMessage,
 		createAt: time.Now(),
-		ownerID:  currentUser.Id,
+		ownerID:  currentUserID,
 	}
 	chat.messageList = append(chat.messageList, newMes)
 
@@ -220,7 +234,7 @@ func SendMessageToChat(chatID string, newMessage string) (string, error) {
 }
 
 //JoinToChat join current user to a chat
-func JoinToChat(chatID string) (string, error) {
+func JoinToChat(chatID, currentUserID string) (string, error) {
 
 	chat, err := getChatFromID(chatID)
 	if err != nil {
@@ -229,7 +243,7 @@ func JoinToChat(chatID string) (string, error) {
 	newID := createUniqID()
 	newMember := member{
 		id:           newID,
-		userID:       currentUser.Id,
+		userID:       currentUserID,
 		addedAt:      time.Now(),
 		memberType:   MEMBER_TYPE__NORMAL,
 		memberStatus: MEMBER_STATUS__NORMAL,
@@ -244,7 +258,7 @@ func JoinToChat(chatID string) (string, error) {
 }
 
 //AddOtherUserToChat add other user to a chat
-func AddOtherUserToChat(chatID string, userID string) (string, error) {
+func AddOtherUserToChat(chatID, currentUserID, userID string) (string, error) {
 
 	chat, err := getChatFromID(chatID)
 	if err != nil {
@@ -263,15 +277,28 @@ func AddOtherUserToChat(chatID string, userID string) (string, error) {
 	return newID, nil
 }
 
-func createUniqID() string {
-	u := make([]byte, 16)
-	_, err := rand.Read(u)
+//GetChat return a chat as json byte array
+func GetChat(chatID, currentUserID string) ([]byte, error) {
+	var eb []byte
+	chat, err := getChatFromID(chatID)
 	if err != nil {
-		return ""
+		return eb, err
 	}
-
-	u[8] = (u[8] | 0x80) & 0xBF // what does this do?
-	u[6] = (u[6] | 0x40) & 0x4F // what does this do?
-
-	return hex.EncodeToString(u)
+	isUserMemberOfChat := false
+	for _, v := range chat.memberList {
+		if v.userID == currentUserID {
+			isUserMemberOfChat = true
+			break
+		}
+	}
+	if !isUserMemberOfChat {
+		return eb, fmt.Errorf("User isn't member of chat")
+	}
+	//fmt.Println(chat, *chat)
+	jChat, err := json.Marshal(*chat)
+	fmt.Println(string(jChat))
+	if err != nil {
+		return eb, err
+	}
+	return jChat, nil
 }

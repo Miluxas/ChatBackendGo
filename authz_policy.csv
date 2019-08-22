@@ -6,5 +6,10 @@ p, user, /Chat/CreateGroupChat, POST
 p, user, /Chat/SendMessageToChat, POST
 p, user, /Chat/JoinToChat, POST
 p, user, /Chat/AddMemberToChat, POST
+p, user, /Chat/GetChat, POST
 
 g, admin@e.c, user
+g, normal@e.c, user
+g, kalim@e.c, user
+g, solivan@e.c, user
+g, ferzin@e.c, user
