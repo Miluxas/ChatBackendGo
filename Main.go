@@ -10,12 +10,6 @@ import (
 	"github.com/miluxas/ChatBackendGo/models"
 )
 
-//User a user info that read from post
-type User struct {
-	Username string `form:"username" json:"username" xml:"username" binding:"required"`
-	Password string `form:"password" json:"password" xml:"password" binding:"required"`
-}
-
 func main() {
 	// load the casbin model and policy from files, database is also supported.
 	e, _ := casbin.NewEnforcer("authz_model.conf", "authz_policy.csv")
@@ -26,20 +20,38 @@ func main() {
 	api := router.Group("/Chat")
 	// no authentication endpoints
 	{
-		api.GET("/login", loginHandler)
+		api.POST("/login", loginHandler)
 	}
 	// basic authentication endpoints
 	{
 		basicAuth := router.Group("/Chat")
 		basicAuth.Use(newAuthorizer(e))
+		//basicAuth.Use(authz.NewAuthorizer(e))
 		basicAuth.Use(checkUserAuthentication())
 		{
 			basicAuth.GET("/logout", logoutHandler)
-			basicAuth.GET("/CreateNewChat/:title", startNewPeerChat)
+			basicAuth.POST("/CreateNewChat", startNewPeerChat)
+			basicAuth.POST("/CreateGroupChat", startNewGroupChat)
+			basicAuth.POST("/SendMessageToChat", sendMessageToChat)
+			basicAuth.POST("/JoinToChat", joinToChat)
+			basicAuth.POST("/AddMemberToChat", addMemberToChat)
 		}
 	}
 
 	router.Run()
+}
+
+func checkUserAuthentication(auths ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		user := session.Get("user")
+		if user == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user needs to be signed in to access this service"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }
 
 func newAuthorizer(e *casbin.Enforcer) gin.HandlerFunc {
@@ -69,22 +81,22 @@ func checkPermission(c *gin.Context, a *casbin.Enforcer) bool {
 	return allowed
 }
 
-// RequirePermission returns the 403 Forbidden to the client
 func requirePermission(c *gin.Context) {
 	c.AbortWithStatus(403)
 }
 
-func startNewPeerChat(c *gin.Context) {
-	models.StartNewPeerChat("ffdfdf", c.Param("title"), "normal@e.c")
-	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!"})
-	//fmt.Println(models.ChatList[len(models.ChatList)-1])
+/********************************************************************************/
+/*	user login 																	*/
+/*																				*/
+/********************************************************************************/
+type user struct {
+	Username string `form:"username" json:"username" xml:"username" binding:"required"`
+	Password string `form:"password" json:"password" xml:"password" binding:"required"`
 }
 
 func loginHandler(c *gin.Context) {
-	user := User{
-		Username: "admin",
-		Password: "admin",
-	}
+	user := user{}
+
 	if err := c.ShouldBind(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -100,18 +112,24 @@ func loginHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid auth type"})
 	}
 	session.Set("user", userID)
+
 	err := session.Save()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate session token"})
 		return
 	}
 
+	//fmt.Println("login :", c.GetString("ginadmin/user_id"))
+
 	c.JSON(http.StatusOK, gin.H{"message": "authentication successful"})
 }
 
+/********************************************************************************/
+/*	user logout 																*/
+/*																				*/
+/********************************************************************************/
 func logoutHandler(c *gin.Context) {
 	session := sessions.Default(c)
-
 	// this would only be hit if the user was authenticated
 	session.Delete("user")
 
@@ -124,16 +142,114 @@ func logoutHandler(c *gin.Context) {
 
 }
 
-//CheckUserAuthentication a func
-func checkUserAuthentication(auths ...string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		session := sessions.Default(c)
-		user := session.Get("user")
-		if user == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "user needs to be signed in to access this service"})
-			c.Abort()
-			return
-		}
-		c.Next()
+/********************************************************************************/
+/*	start new peer chat															*/
+/*																				*/
+/********************************************************************************/
+type startNewChat struct {
+	Title      string `form:"title" json:"title" xml:"title" binding:"required"`
+	PeerUserID string `form:"peerUserId" json:"peerUserId" xml:"peerUserId" binding:"required"`
+}
+
+func startNewPeerChat(c *gin.Context) {
+	newChat := startNewChat{}
+	if err := c.ShouldBind(&newChat); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	newChatID := models.StartNewPeerChat(newChat.Title, newChat.PeerUserID)
+	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
+}
+
+/********************************************************************************/
+/*	start new group chat														*/
+/*																				*/
+/********************************************************************************/
+type newGroupChat struct {
+	Title    string `form:"title" json:"title" xml:"title" binding:"required"`
+	ChatType string `form:"chatType" json:"chatType" xml:"chatType" binding:"required"`
+}
+
+func startNewGroupChat(c *gin.Context) {
+	newGroupChat := newGroupChat{}
+	if err := c.ShouldBind(&newGroupChat); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	newChatID := models.StartNewGroupChat(newGroupChat.Title, newGroupChat.ChatType)
+	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
+}
+
+/********************************************************************************/
+/*	send message to a chat														*/
+/*																				*/
+/********************************************************************************/
+type newMessage struct {
+	ChatID  string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
+	Message string `form:"message" json:"message" xml:"message" binding:"required"`
+}
+
+func sendMessageToChat(c *gin.Context) {
+	newMessage := newMessage{}
+	if err := c.ShouldBind(&newMessage); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	newID, err := models.SendMessageToChat(newMessage.ChatID, newMessage.Message)
+	if err == nil {
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Message created successfully!", "newId": newID})
+		return
+	}
+	{
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
+	}
+}
+
+/********************************************************************************/
+/*	join to a chat																*/
+/*																				*/
+/********************************************************************************/
+type chat struct {
+	ChatID string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
+}
+
+func joinToChat(c *gin.Context) {
+	chat := chat{}
+	if err := c.ShouldBind(&chat); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	newID, err := models.JoinToChat(chat.ChatID)
+	if err == nil {
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "joined to chat successfully!", "newId": newID})
+		return
+	}
+	{
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
+	}
+}
+
+/********************************************************************************/
+/*	add a new member to a chat													*/
+/*																				*/
+/********************************************************************************/
+type newMember struct {
+	ChatID string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
+	UserID string `form:"userId" json:"userId" xml:"userId" binding:"required"`
+}
+
+func addMemberToChat(c *gin.Context) {
+	newMember := newMember{}
+	if err := c.ShouldBind(&newMember); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	newID, err := models.AddOtherUserToChat(newMember.ChatID, newMember.UserID)
+	if err == nil {
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "new member added successfully!", "newId": newID})
+		return
+	}
+	{
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}
 }

@@ -21,11 +21,11 @@ type MemberType int
 type MemberStatus int
 
 const (
-	Chat_Type__Peer           ChatType = 0
-	Chat_Type__PUBLIC_GROUP   ChatType = 1
-	Chat_Type__PRIVATE_GROUP  ChatType = 2
-	Chat_Type__PUBLIC_CANNAL  ChatType = 3
-	Chat_Type__PRIVATE_CANNAL ChatType = 4
+	Chat_Type__Peer           string = "PEER"
+	Chat_Type__PUBLIC_GROUP   string = "PUBLIC_GROUP"
+	Chat_Type__PRIVATE_GROUP  string = "PRIVATE_GROUP"
+	Chat_Type__PUBLIC_CANNAL  string = "PUBLIC_CANNAL"
+	Chat_Type__PRIVATE_CANNAL string = "PRIVATE_CANNAL"
 
 	MEMBER_TYPE__OWNER  MemberType = 0
 	MEMBER_TYPE__ADMIN  MemberType = 1
@@ -75,7 +75,7 @@ type chat struct {
 	id          string
 	title       string
 	createAt    time.Time
-	chatType    ChatType
+	chatType    string
 	memberList  []member
 	messageList []message
 }
@@ -144,7 +144,7 @@ func getChatFromID(chatID string) (*chat, error) {
 }
 
 //StartNewPeerChat start new peer to peer chat with peerUser
-func StartNewPeerChat(newChatID string, newChatTitle string, userID string) {
+func StartNewPeerChat(newChatTitle string, userID string) string {
 	newMember := member{
 		id:           createUniqID(),
 		userID:       userID,
@@ -160,7 +160,7 @@ func StartNewPeerChat(newChatID string, newChatTitle string, userID string) {
 		memberType:   MEMBER_TYPE__OWNER,
 		memberStatus: MEMBER_STATUS__NORMAL,
 	}
-
+	newChatID := createUniqID()
 	newChat := chat{
 		id:       newChatID,
 		title:    newChatTitle,
@@ -172,10 +172,11 @@ func StartNewPeerChat(newChatID string, newChatTitle string, userID string) {
 	newChat.addMember(&newMember)
 
 	ChatList = append(ChatList, newChat)
+	return newChatID
 }
 
 //StartNewGroupChat start new group chat
-func StartNewGroupChat(newChatID string, newChatTitle string, chatType ChatType) {
+func StartNewGroupChat(newChatTitle string, chatType string) string {
 
 	ownerMember := member{
 		id:           createUniqID(),
@@ -184,7 +185,7 @@ func StartNewGroupChat(newChatID string, newChatTitle string, chatType ChatType)
 		memberType:   MEMBER_TYPE__OWNER,
 		memberStatus: MEMBER_STATUS__NORMAL,
 	}
-
+	newChatID := createUniqID()
 	newChat := chat{
 		id:       newChatID,
 		title:    newChatTitle,
@@ -195,35 +196,39 @@ func StartNewGroupChat(newChatID string, newChatTitle string, chatType ChatType)
 	newChat.addMember(&ownerMember)
 
 	ChatList = append(ChatList, newChat)
+	return newChatID
 }
 
 //SendMessageToChat add message to a chat
-func SendMessageToChat(chatID string, newMessage string) {
+func SendMessageToChat(chatID string, newMessage string) (string, error) {
 
 	chat, err := getChatFromID(chatID)
 	if err != nil {
-		return
+		return "", err
 	}
 
+	newID := createUniqID()
 	newMes := message{
-		id:       createUniqID(),
+		id:       newID,
 		content:  newMessage,
 		createAt: time.Now(),
 		ownerID:  currentUser.Id,
 	}
 	chat.messageList = append(chat.messageList, newMes)
+
+	return newID, nil
 }
 
 //JoinToChat join current user to a chat
-func JoinToChat(chatID string) {
+func JoinToChat(chatID string) (string, error) {
 
 	chat, err := getChatFromID(chatID)
 	if err != nil {
-		return
+		return "", err
 	}
-
+	newID := createUniqID()
 	newMember := member{
-		id:           createUniqID(),
+		id:           newID,
 		userID:       currentUser.Id,
 		addedAt:      time.Now(),
 		memberType:   MEMBER_TYPE__NORMAL,
@@ -235,19 +240,19 @@ func JoinToChat(chatID string) {
 	}
 
 	chat.addMember(&newMember)
-
+	return newID, nil
 }
 
 //AddOtherUserToChat add other user to a chat
-func AddOtherUserToChat(chatID string, userID string) {
+func AddOtherUserToChat(chatID string, userID string) (string, error) {
 
 	chat, err := getChatFromID(chatID)
 	if err != nil {
-		return
+		return "", err
 	}
-
+	newID := createUniqID()
 	newMember := member{
-		id:           createUniqID(),
+		id:           newID,
 		userID:       userID,
 		addedAt:      time.Now(),
 		memberType:   MEMBER_TYPE__NORMAL,
@@ -255,7 +260,7 @@ func AddOtherUserToChat(chatID string, userID string) {
 	}
 
 	chat.addMember(&newMember)
-
+	return newID, nil
 }
 
 func createUniqID() string {

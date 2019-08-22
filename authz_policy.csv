@@ -1,6 +1,10 @@
 p, *, /Chat/login, GET
 p, user, /Chat/logout, GET
 
-p, admin@e.c, /Chat/CreateNewChat/*, GET
+p, user, /Chat/CreateNewChat, POST
+p, user, /Chat/CreateGroupChat, POST
+p, user, /Chat/SendMessageToChat, POST
+p, user, /Chat/JoinToChat, POST
+p, user, /Chat/AddMemberToChat, POST
 
 g, admin@e.c, user
