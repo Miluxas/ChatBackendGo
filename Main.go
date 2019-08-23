@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -164,7 +165,14 @@ func startNewPeerChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	newChatID := models.StartNewPeerChat(newChat.Title, getUserID(c), newChat.PeerUserID)
+	newAlert := models.Alert{
+		AlertType: "NewChatCreated",
+		Data:      newChatID,
+	}
+	models.UserChannel(getUserID(c)).Submit(newAlert)
+	models.UserChannel(newChat.PeerUserID).Submit(newAlert)
 	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
 }
 
@@ -184,6 +192,11 @@ func startNewGroupChat(c *gin.Context) {
 		return
 	}
 	newChatID := models.StartNewGroupChat(newGroupChat.Title, getUserID(c), newGroupChat.ChatType)
+	newAlert := models.Alert{
+		AlertType: "NewChatCreated",
+		Data:      newChatID,
+	}
+	models.UserChannel(getUserID(c)).Submit(newAlert)
 	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
 }
 
@@ -207,6 +220,11 @@ func sendMessageToChat(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Message created successfully!", "newId": newID})
 		return
 	}
+	newAlert := models.Alert{
+		AlertType: "NewMessageAdded",
+		Data:      newMessage,
+	}
+	models.UserChannel(getUserID(c)).Submit(newAlert)
 	{
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}
@@ -231,6 +249,11 @@ func joinToChat(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "joined to chat successfully!", "newId": newID})
 		return
 	}
+	newAlert := models.Alert{
+		AlertType: "JoinedToChat",
+		Data:      chat,
+	}
+	models.UserChannel(getUserID(c)).Submit(newAlert)
 	{
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}
@@ -256,6 +279,12 @@ func addMemberToChat(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "new member added successfully!", "newId": newID})
 		return
 	}
+	newAlert := models.Alert{
+		AlertType: "AddedToChat",
+		Data:      newMember,
+	}
+	models.UserChannel(getUserID(c)).Submit(newAlert)
+	models.UserChannel(newMember.UserID).Submit(newAlert)
 	{
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}
@@ -279,4 +308,25 @@ func getChat(c *gin.Context) {
 	{
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}
+}
+
+/********************************************************************************/
+/*	get the realtime stream 													*/
+/*																				*/
+/********************************************************************************/
+func stream(c *gin.Context) {
+	userID := getUserID(c)
+	listener := models.OpenListener(userID)
+	defer models.CloseListener(userID, listener)
+
+	clientGone := c.Writer.CloseNotify()
+	c.Stream(func(w io.Writer) bool {
+		select {
+		case <-clientGone:
+			return false
+		case message := <-listener:
+			c.SSEvent("message", message)
+			return true
+		}
+	})
 }

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/dustin/go-broadcast"
 )
 
 func init() {
@@ -41,84 +43,90 @@ const (
 
 var ChatList []chat
 var users = []user{user{
-	Id:        "admin@e.c",
-	firstName: "admin",
-	lastName:  "admini",
+	ID:        "admin@e.c",
+	FirstName: "admin",
+	LastName:  "admini",
 	username:  "admin",
 	password:  "admin",
 }, user{
-	Id:        "normal@e.c",
-	firstName: "normalUser",
-	lastName:  "lastNormal",
+	ID:        "normal@e.c",
+	FirstName: "normalUser",
+	LastName:  "lastNormal",
 	username:  "normal",
 	password:  "normal",
 }, user{
-	Id:        "kalim@e.c",
-	firstName: "karim",
-	lastName:  "Aq Mangool",
+	ID:        "kalim@e.c",
+	FirstName: "karim",
+	LastName:  "Aq Mangool",
 	username:  "kalim",
 	password:  "kalim",
 }, user{
-	Id:        "solivan@e.c",
-	firstName: "solivan",
-	lastName:  "sol",
+	ID:        "solivan@e.c",
+	FirstName: "solivan",
+	LastName:  "sol",
 	username:  "solivan",
 	password:  "solivan",
 }, user{
-	Id:        "ferzin@e.c",
-	firstName: "ferzin",
-	lastName:  "feriiii",
+	ID:        "ferzin@e.c",
+	FirstName: "ferzin",
+	LastName:  "feriiii",
 	username:  "ferzin",
 	password:  "ferzin",
 }}
 
 type chat struct {
-	id          string
+	ID          string
 	Title       string
 	CreateAt    time.Time
-	chatType    string
-	memberList  []member
-	messageList []message
+	ChatType    string
+	MemberList  []member
+	MessageList []message
 }
 
 func (ch *chat) addMember(newMem *member) {
 	var mem member
 	isMemberExist := false
-	for _, v := range ch.memberList {
-		if v.userID == newMem.userID {
+	for _, v := range ch.MemberList {
+		if v.UserID == newMem.UserID {
 			isMemberExist = true
 			mem = v
 		}
 	}
 
 	if !isMemberExist {
-		if mem.memberStatus != MEMBER_STATUS__LEFT {
-			ch.memberList = append(ch.memberList, *newMem)
+		if mem.MemberStatus != MEMBER_STATUS__LEFT {
+			ch.MemberList = append(ch.MemberList, *newMem)
 		}
 	}
 }
 
 type message struct {
-	id       string
-	content  string
-	createAt time.Time
-	ownerID  string
+	ID       string
+	Content  string
+	CreateAt time.Time
+	OwnerID  string
 }
 
 type member struct {
-	id           string
-	userID       string
-	addedAt      time.Time
-	memberType   MemberType
-	memberStatus MemberStatus
+	ID           string
+	UserID       string
+	AddedAt      time.Time
+	MemberType   MemberType
+	MemberStatus MemberStatus
 }
 
 type user struct {
-	Id        string
-	firstName string
-	lastName  string
+	ID        string
+	FirstName string
+	LastName  string
 	username  string
 	password  string
+}
+
+//Alert alert for realtime
+type Alert struct {
+	AlertType string
+	Data      interface{}
 }
 
 //var currentUser user
@@ -138,7 +146,7 @@ func createUniqID() string {
 
 func getChatFromID(chatID string) (*chat, error) {
 	for ind, v := range ChatList {
-		if v.id == chatID {
+		if v.ID == chatID {
 			return &ChatList[ind], nil
 		}
 	}
@@ -150,7 +158,7 @@ func AuthenticateUser(username, password string) string {
 	for _, usr := range users {
 		if usr.username == username && usr.password == password {
 			//currentUser = usr
-			return usr.Id
+			return usr.ID
 		}
 	}
 	//currentUser = user{}
@@ -160,25 +168,25 @@ func AuthenticateUser(username, password string) string {
 //StartNewPeerChat start new peer to peer chat with peerUser
 func StartNewPeerChat(newChatTitle, currentUserID, userID string) string {
 	newMember := member{
-		id:           createUniqID(),
-		userID:       userID,
-		addedAt:      time.Now(),
-		memberType:   MEMBER_TYPE__NORMAL,
-		memberStatus: MEMBER_STATUS__NORMAL,
+		ID:           createUniqID(),
+		UserID:       userID,
+		AddedAt:      time.Now(),
+		MemberType:   MEMBER_TYPE__NORMAL,
+		MemberStatus: MEMBER_STATUS__NORMAL,
 	}
 
 	ownerMember := member{
-		id:           createUniqID(),
-		userID:       currentUserID,
-		addedAt:      time.Now(),
-		memberType:   MEMBER_TYPE__OWNER,
-		memberStatus: MEMBER_STATUS__NORMAL,
+		ID:           createUniqID(),
+		UserID:       currentUserID,
+		AddedAt:      time.Now(),
+		MemberType:   MEMBER_TYPE__OWNER,
+		MemberStatus: MEMBER_STATUS__NORMAL,
 	}
 	newChatID := createUniqID()
 	newChat := chat{
-		id:       newChatID,
+		ID:       newChatID,
 		Title:    newChatTitle,
-		chatType: Chat_Type__Peer,
+		ChatType: Chat_Type__Peer,
 		CreateAt: time.Now(),
 	}
 
@@ -193,17 +201,17 @@ func StartNewPeerChat(newChatTitle, currentUserID, userID string) string {
 func StartNewGroupChat(newChatTitle, currentUserID, chatType string) string {
 
 	ownerMember := member{
-		id:           createUniqID(),
-		userID:       currentUserID,
-		addedAt:      time.Now(),
-		memberType:   MEMBER_TYPE__OWNER,
-		memberStatus: MEMBER_STATUS__NORMAL,
+		ID:           createUniqID(),
+		UserID:       currentUserID,
+		AddedAt:      time.Now(),
+		MemberType:   MEMBER_TYPE__OWNER,
+		MemberStatus: MEMBER_STATUS__NORMAL,
 	}
 	newChatID := createUniqID()
 	newChat := chat{
-		id:       newChatID,
+		ID:       newChatID,
 		Title:    newChatTitle,
-		chatType: chatType,
+		ChatType: chatType,
 		CreateAt: time.Now(),
 	}
 
@@ -223,12 +231,12 @@ func SendMessageToChat(chatID, currentUserID, newMessage string) (string, error)
 
 	newID := createUniqID()
 	newMes := message{
-		id:       newID,
-		content:  newMessage,
-		createAt: time.Now(),
-		ownerID:  currentUserID,
+		ID:       newID,
+		Content:  newMessage,
+		CreateAt: time.Now(),
+		OwnerID:  currentUserID,
 	}
-	chat.messageList = append(chat.messageList, newMes)
+	chat.MessageList = append(chat.MessageList, newMes)
 
 	return newID, nil
 }
@@ -242,15 +250,15 @@ func JoinToChat(chatID, currentUserID string) (string, error) {
 	}
 	newID := createUniqID()
 	newMember := member{
-		id:           newID,
-		userID:       currentUserID,
-		addedAt:      time.Now(),
-		memberType:   MEMBER_TYPE__NORMAL,
-		memberStatus: MEMBER_STATUS__NORMAL,
+		ID:           newID,
+		UserID:       currentUserID,
+		AddedAt:      time.Now(),
+		MemberType:   MEMBER_TYPE__NORMAL,
+		MemberStatus: MEMBER_STATUS__NORMAL,
 	}
 
-	if chat.chatType == Chat_Type__PRIVATE_CANNAL || chat.chatType == Chat_Type__PRIVATE_GROUP {
-		newMember.memberStatus = MEMBER_STATUS__REQUESTED
+	if chat.ChatType == Chat_Type__PRIVATE_CANNAL || chat.ChatType == Chat_Type__PRIVATE_GROUP {
+		newMember.MemberStatus = MEMBER_STATUS__REQUESTED
 	}
 
 	chat.addMember(&newMember)
@@ -266,11 +274,11 @@ func AddOtherUserToChat(chatID, currentUserID, userID string) (string, error) {
 	}
 	newID := createUniqID()
 	newMember := member{
-		id:           newID,
-		userID:       userID,
-		addedAt:      time.Now(),
-		memberType:   MEMBER_TYPE__NORMAL,
-		memberStatus: MEMBER_STATUS__NORMAL,
+		ID:           newID,
+		UserID:       userID,
+		AddedAt:      time.Now(),
+		MemberType:   MEMBER_TYPE__NORMAL,
+		MemberStatus: MEMBER_STATUS__NORMAL,
 	}
 
 	chat.addMember(&newMember)
@@ -285,8 +293,8 @@ func GetChat(chatID, currentUserID string) ([]byte, error) {
 		return eb, err
 	}
 	isUserMemberOfChat := false
-	for _, v := range chat.memberList {
-		if v.userID == currentUserID {
+	for _, v := range chat.MemberList {
+		if v.UserID == currentUserID {
 			isUserMemberOfChat = true
 			break
 		}
@@ -301,4 +309,42 @@ func GetChat(chatID, currentUserID string) ([]byte, error) {
 		return eb, err
 	}
 	return jChat, nil
+}
+
+/********************************************************************/
+/*					realtime functions								*/
+/*																	*/
+/********************************************************************/
+var userChannels = make(map[string]broadcast.Broadcaster)
+
+//OpenListener open listener
+func OpenListener(userid string) chan interface{} {
+	listener := make(chan interface{})
+	UserChannel(userid).Register(listener)
+	return listener
+}
+
+//CloseListener close listener
+func CloseListener(userid string, listener chan interface{}) {
+	UserChannel(userid).Unregister(listener)
+	close(listener)
+}
+
+//DeleteBroadcast delete broadcast
+func DeleteBroadcast(userid string) {
+	b, ok := userChannels[userid]
+	if ok {
+		b.Close()
+		delete(userChannels, userid)
+	}
+}
+
+//UserChannel get user channel
+func UserChannel(userid string) broadcast.Broadcaster {
+	b, ok := userChannels[userid]
+	if !ok {
+		b = broadcast.NewBroadcaster(10)
+		userChannels[userid] = b
+	}
+	return b
 }
