@@ -7,6 +7,7 @@ p, user, /Chat/SendMessageToChat, POST
 p, user, /Chat/JoinToChat, POST
 p, user, /Chat/AddMemberToChat, POST
 p, user, /Chat/GetChat, POST
+p, user, /Chat/Stream, GET
 
 g, admin@e.c, user
 g, normal@e.c, user

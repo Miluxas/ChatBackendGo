@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="utf-8">
+    <title>Hackathon</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript">
+
+            if (!!window.EventSource) {
+                var source = new EventSource('/Chat/Stream');
+                source.addEventListener('message', function(e) {
+                    console.log(e)
+                    //var data = JSON.parse(msg.data);
+                    //console.log(data)
+                }, false);
+            } else {
+                alert("NOT SUPPORTED");
+            }
+
+
+        function addToList(item) {
+            var node = document.createElement("LI");
+            node.className="list-group-item"
+            var textnode = document.createTextNode(item);
+            node.appendChild(textnode);
+            document.getElementById("listId").appendChild(node);
+            }
+
+        var tmpList=[];
+        function selectOnChange(){
+            var x = document.getElementById("selectId").value;
+            if(prevSymbol!=x){
+                ws.readyState
+                ws.send(JSON.stringify({
+                "forget_all": "ticks"
+                }));
+
+                prevSymbol=x;
+            }
+        }
+
+        function clickLogin(){
+            var posting = $.post( "/Chat/login", { username: $('#username').val(), password: $('#pwd').val() } );
+            posting.done(function( data ) {
+                alert('success');
+            });
+        }
+
+        function clickLogout(){
+            var posting = $.get( "/Chat/logout");
+            posting.done(function( data ) {
+                alert('success');
+            });
+        }
+        function createPeerChat(){
+            var posting = $.post( "/Chat/CreateNewChat", { title: $('#chatNameId').val(), peerUserId: $('#peerUserId').val() } );
+            posting.done(function( data ) {
+                alert('success');
+            });
+        }
+
+
+    </script>
+</head>
+
+<body>
+        <div class="container">
+            <div class="row" style="text-align: center">
+                <div class="col-md-3 form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" class="form-control" id="username" name="username">
+                </div>
+                <div class="col-md-3 form-group">
+                    <label for="pwd">Password:</label>
+                    <input type="password" class="form-control" id="pwd" name="password">
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-default form-control" onclick="clickLogin()">Login</button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-default form-control" onclick="clickLogout()">Logout</button>
+                </div>
+            </div>
+            <div class="row">
+            <div class="col-sm-3" style="background-color: cadetblue">
+
+                    <input type="text" class="form-control" placeholder="Chat Name" id="chatNameId" >
+                    
+                    <input type="email" class="form-control" placeholder="Peer User ID" id="peerUserId" >
+ 
+                    <button class="btn btn-default form-control" onclick="createPeerChat()">Create</button>
+                
+
+            </select>
+            </div>
+            <div class="col-sm-6">
+                <ul  class="list-group" id="listId">
+                </ul> 
+            </div>
+        </div>
+</body>
+</html>

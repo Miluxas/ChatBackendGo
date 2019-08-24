@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/casbin/casbin"
-	"github.com/gin-gonic/contrib/sessions"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+
 	"github.com/gin-gonic/gin"
 	"github.com/miluxas/ChatBackendGo/models"
 )
@@ -15,10 +17,19 @@ import (
 func main() {
 	// load the casbin model and policy from files, database is also supported.
 	e, _ := casbin.NewEnforcer("authz_model.conf", "authz_policy.csv")
-	store := sessions.NewCookieStore([]byte("sessionSuperSecret"))
+	//store := sessions.NewCookieStore([]byte("sessionSuperSecret"))
 	router := gin.New()
-	router.Use(sessions.Sessions("sessionName", store))
 
+	store := cookie.NewStore([]byte("secret"))
+	router.Use(sessions.Sessions("mysession", store))
+	//store := cookie.NewStore([]byte("secret"))
+	//router.Use(sessions.Sessions("mysession", store))
+	//router.Use(sessions.Sessions("mysession", store))
+	//router.LoadHTMLGlob("staic/*.html")
+	//router.GET("/", index)
+
+	router.LoadHTMLGlob("*.html")
+	router.GET("/", indexHandler)
 	api := router.Group("/Chat")
 	// no authentication endpoints
 	{
@@ -38,12 +49,18 @@ func main() {
 			basicAuth.POST("/JoinToChat", joinToChat)
 			basicAuth.POST("/AddMemberToChat", addMemberToChat)
 			basicAuth.POST("/GetChat", getChat)
+			basicAuth.GET("/Stream", stream)
 		}
 	}
 
-	router.Run()
+	router.Run(":3030")
+	//http.ListenAndServe(":3000", nil)
 }
 
+func indexHandler(c *gin.Context) {
+	c.HTML(http.StatusOK, "index.html", nil)
+	//c.JSON(http.StatusOK, gin.H{"message": "authentication successful"})
+}
 func checkUserAuthentication(auths ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
@@ -69,7 +86,7 @@ func checkPermission(c *gin.Context, a *casbin.Enforcer) bool {
 	session := sessions.Default(c)
 	user := session.Get("user")
 	if user == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "user needs to be signed in to access this service"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user needs to be signed in to access this service(get user from session)"})
 		c.Abort()
 		return false
 	}
@@ -110,7 +127,6 @@ func loginHandler(c *gin.Context) {
 		return
 	}
 	session := sessions.Default(c)
-
 	userID := models.AuthenticateUser(user.Username, user.Password)
 
 	if strings.Trim(user.Username, " ") == "" {
@@ -120,14 +136,11 @@ func loginHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid auth type"})
 	}
 	session.Set("user", userID)
-
 	err := session.Save()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate session token"})
 		return
 	}
-
-	//fmt.Println("login :", c.GetString("ginadmin/user_id"))
 
 	c.JSON(http.StatusOK, gin.H{"message": "authentication successful"})
 }
@@ -171,7 +184,7 @@ func startNewPeerChat(c *gin.Context) {
 		AlertType: "NewChatCreated",
 		Data:      newChatID,
 	}
-	models.UserChannel(getUserID(c)).Submit(newAlert)
+	//models.UserChannel(getUserID(c)).Submit(newAlert)
 	models.UserChannel(newChat.PeerUserID).Submit(newAlert)
 	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
 }
@@ -320,6 +333,7 @@ func stream(c *gin.Context) {
 	defer models.CloseListener(userID, listener)
 
 	clientGone := c.Writer.CloseNotify()
+
 	c.Stream(func(w io.Writer) bool {
 		select {
 		case <-clientGone:
