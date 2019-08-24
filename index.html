@@ -8,46 +8,120 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
     <script type="text/javascript">
+        var chatListResult = $.post( "/Chat/GetChatList" );
+        chatListResult.done(function( data ) {
+            //var str = String.fromCharCode.apply(String, data);
+            var jso=JSON.parse(data.jChatList);
+                jso.forEach(element => {
+                    console.log(element);
+                    addToChatList(element);
+                });
+               // console.log(jso);
+            });
 
             if (!!window.EventSource) {
                 var source = new EventSource('/Chat/Stream');
-                source.addEventListener('message', function(e) {
+                source.addEventListener('AddedToChat', function(e) {
+                    var data=JSON.parse(e.data);
+                    console.log(data)
+                     addToChatList(data);
+                    //var data = JSON.parse(msg.data);
+                    //
+                }, false);
+
+                source.addEventListener('JoinedToChat', function(e) {
                     console.log(e)
                     //var data = JSON.parse(msg.data);
                     //console.log(data)
+                }, false);
+
+                source.addEventListener('NewMessageAdded', function(e) {
+                    console.log("new message add")
+                    var data=JSON.parse(e.data);
+                    console.log(data)
+                     addToMessageList(data);
+                    //var data = JSON.parse(msg.data);
+                    //console.log(data)
+                }, false);
+
+                source.addEventListener('NewChatCreated', function(e) {
+                    var data=JSON.parse(e.data);
+                    addToChatList(data);
+                    //var data = JSON.parse(msg.data);
+                    console.log(data)
                 }, false);
             } else {
                 alert("NOT SUPPORTED");
             }
 
 
-        function addToList(item) {
+        function loadChat(chatId){
+            var posting = $.post( "/Chat/GetChat" , { chatId: chatId});
+            posting.done(function( data ) {
+                var jChat=JSON.parse(data.jChat);
+                console.log(jChat)
+                if(jChat.MessageList!=null){
+                    document.getElementById("messageListId").innerHTML=""
+                    jChat.MessageList.forEach(element => {
+                    addToMessageList(element)
+                });
+                }
+                
+                document.getElementById("memberListId").innerHTML=""
+                jChat.MemberList.forEach(element => {
+                    addToMemberList(element)
+                });
+
+                document.getElementById("sendNewMessageButtonId").onclick=function() { 
+                    clickSendNewMessage(chatId) }
+            });
+        }
+        
+        function addToMemberList(item) {
             var node = document.createElement("LI");
             node.className="list-group-item"
-            var textnode = document.createTextNode(item);
+            node.id=item.ID
+            var textnode = document.createTextNode(item.UserID);
+            textnode.value=item.ID;
+            node.appendChild(textnode);
+            document.getElementById("memberListId").appendChild(node);
+            }
+        
+        function addToMessageList(item) {
+            var node = document.createElement("LI");
+            node.className="list-group-item"
+            node.id=item.ID
+            var textnode = document.createTextNode(item.Content);
+            textnode.value=item.ID;
+            node.appendChild(textnode);
+            document.getElementById("messageListId").appendChild(node);
+            }
+
+        function addToChatList(item) {
+            var node = document.createElement("BUTTON");
+            node.className="list-group-item"
+            node.id=item.ID
+            node.onclick=function() { loadChat(item.ID) }
+            var textnode = document.createTextNode(item.Title);
+            textnode.value=item.ID;
             node.appendChild(textnode);
             document.getElementById("listId").appendChild(node);
             }
 
-        var tmpList=[];
-        function selectOnChange(){
-            var x = document.getElementById("selectId").value;
-            if(prevSymbol!=x){
-                ws.readyState
-                ws.send(JSON.stringify({
-                "forget_all": "ticks"
-                }));
 
-                prevSymbol=x;
-            }
-        }
 
-        function clickLogin(){
+            function clickLogin(){
             var posting = $.post( "/Chat/login", { username: $('#username').val(), password: $('#pwd').val() } );
             posting.done(function( data ) {
                 alert('success');
             });
         }
+
+        function clickSendNewMessage(chatId){
+            var posting = $.post( "/Chat/SendMessageToChat", { chatId: chatId, message: $('#newMessageId').val() } );
+            posting.done(function( data ) {
+            });
+}
 
         function clickLogout(){
             var posting = $.get( "/Chat/logout");
@@ -69,18 +143,18 @@
 <body>
         <div class="container">
             <div class="row" style="text-align: center">
-                <div class="col-md-3 form-group">
+                <div class="col-sm-3 form-group">
                     <label for="username">Username:</label>
                     <input type="text" class="form-control" id="username" name="username">
                 </div>
-                <div class="col-md-3 form-group">
+                <div class="col-sm-3 form-group">
                     <label for="pwd">Password:</label>
                     <input type="password" class="form-control" id="pwd" name="password">
                 </div>
-                <div class="col-md-3">
+                <div class="col-sm-3">
                     <button class="btn btn-default form-control" onclick="clickLogin()">Login</button>
                 </div>
-                <div class="col-md-3">
+                <div class="col-sm-3">
                     <button class="btn btn-default form-control" onclick="clickLogout()">Logout</button>
                 </div>
             </div>
@@ -92,13 +166,28 @@
                     <input type="email" class="form-control" placeholder="Peer User ID" id="peerUserId" >
  
                     <button class="btn btn-default form-control" onclick="createPeerChat()">Create</button>
-                
+                <div>
+                        <ul  class="list-group" id="listId">
+                            </ul> 
+                </div>
 
             </select>
             </div>
-            <div class="col-sm-6">
-                <ul  class="list-group" id="listId">
-                </ul> 
+            <div class="col-sm-9">
+                <div class="col-sm-9">
+                    <div class="row">
+                        <input type="text" class="col-sm-9 form-control" placeholder="Message" id="newMessageId" >
+                        <button class="btn btn-default form-control col-sm-3" id="sendNewMessageButtonId">Send</button>
+                    </div>
+                    <div>
+                    <ul  class="list-group" id="messageListId">
+                    </ul> </div>
+                </div>
+                <div class="col-sm-3">
+                    <ul  class="list-group" id="memberListId">
+                    </ul> 
+                </div>
+                
             </div>
         </div>
 </body>

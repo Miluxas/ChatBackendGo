@@ -100,6 +100,15 @@ func (ch *chat) addMember(newMem *member) {
 	}
 }
 
+func (ch *chat) findMember(userID string) bool {
+	for _, v := range ch.MemberList {
+		if v.UserID == userID {
+			return true
+		}
+	}
+	return false
+}
+
 type message struct {
 	ID       string
 	Content  string
@@ -286,11 +295,10 @@ func AddOtherUserToChat(chatID, currentUserID, userID string) (string, error) {
 }
 
 //GetChat return a chat as json byte array
-func GetChat(chatID, currentUserID string) ([]byte, error) {
-	var eb []byte
+func GetChat(chatID, currentUserID string) (string, error) {
 	chat, err := getChatFromID(chatID)
 	if err != nil {
-		return eb, err
+		return "", err
 	}
 	isUserMemberOfChat := false
 	for _, v := range chat.MemberList {
@@ -300,15 +308,32 @@ func GetChat(chatID, currentUserID string) ([]byte, error) {
 		}
 	}
 	if !isUserMemberOfChat {
-		return eb, fmt.Errorf("User isn't member of chat")
+		return "", fmt.Errorf("User isn't member of chat")
 	}
 	//fmt.Println(chat, *chat)
 	jChat, err := json.Marshal(*chat)
 	fmt.Println(string(jChat))
 	if err != nil {
-		return eb, err
+		return "", err
 	}
-	return jChat, nil
+	return string(jChat), nil
+}
+
+//GetChatList return user chat list as json byte array
+func GetChatList(currentUserID string) (string, error) {
+	var tmpList []chat
+	for _, v := range ChatList {
+		if v.findMember(currentUserID) {
+			tmpList = append(tmpList, v)
+		}
+	}
+	//fmt.Println(chat, *chat)
+	jChat, err := json.Marshal(tmpList)
+	//fmt.Println(string(jChat))
+	if err != nil {
+		return "", err
+	}
+	return string(jChat), nil
 }
 
 /********************************************************************/

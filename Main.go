@@ -17,17 +17,9 @@ import (
 func main() {
 	// load the casbin model and policy from files, database is also supported.
 	e, _ := casbin.NewEnforcer("authz_model.conf", "authz_policy.csv")
-	//store := sessions.NewCookieStore([]byte("sessionSuperSecret"))
 	router := gin.New()
-
 	store := cookie.NewStore([]byte("secret"))
 	router.Use(sessions.Sessions("mysession", store))
-	//store := cookie.NewStore([]byte("secret"))
-	//router.Use(sessions.Sessions("mysession", store))
-	//router.Use(sessions.Sessions("mysession", store))
-	//router.LoadHTMLGlob("staic/*.html")
-	//router.GET("/", index)
-
 	router.LoadHTMLGlob("*.html")
 	router.GET("/", indexHandler)
 	api := router.Group("/Chat")
@@ -49,6 +41,7 @@ func main() {
 			basicAuth.POST("/JoinToChat", joinToChat)
 			basicAuth.POST("/AddMemberToChat", addMemberToChat)
 			basicAuth.POST("/GetChat", getChat)
+			basicAuth.POST("/GetChatList", getChatList)
 			basicAuth.GET("/Stream", stream)
 		}
 	}
@@ -168,8 +161,9 @@ func logoutHandler(c *gin.Context) {
 /*																				*/
 /********************************************************************************/
 type startNewChat struct {
-	Title      string `form:"title" json:"title" xml:"title" binding:"required"`
+	Title      string `form:"title" json:"Title" xml:"title" binding:"required"`
 	PeerUserID string `form:"peerUserId" json:"peerUserId" xml:"peerUserId" binding:"required"`
+	ID         string
 }
 
 func startNewPeerChat(c *gin.Context) {
@@ -180,9 +174,10 @@ func startNewPeerChat(c *gin.Context) {
 	}
 
 	newChatID := models.StartNewPeerChat(newChat.Title, getUserID(c), newChat.PeerUserID)
+	newChat.ID = newChatID
 	newAlert := models.Alert{
 		AlertType: "NewChatCreated",
-		Data:      newChatID,
+		Data:      newChat,
 	}
 	//models.UserChannel(getUserID(c)).Submit(newAlert)
 	models.UserChannel(newChat.PeerUserID).Submit(newAlert)
@@ -207,7 +202,7 @@ func startNewGroupChat(c *gin.Context) {
 	newChatID := models.StartNewGroupChat(newGroupChat.Title, getUserID(c), newGroupChat.ChatType)
 	newAlert := models.Alert{
 		AlertType: "NewChatCreated",
-		Data:      newChatID,
+		Data:      newGroupChat,
 	}
 	models.UserChannel(getUserID(c)).Submit(newAlert)
 	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
@@ -219,7 +214,8 @@ func startNewGroupChat(c *gin.Context) {
 /********************************************************************************/
 type newMessage struct {
 	ChatID  string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
-	Message string `form:"message" json:"message" xml:"message" binding:"required"`
+	Message string `form:"message" json:"Content" xml:"message" binding:"required"`
+	OwnerID string
 }
 
 func sendMessageToChat(c *gin.Context) {
@@ -229,15 +225,17 @@ func sendMessageToChat(c *gin.Context) {
 		return
 	}
 	newID, err := models.SendMessageToChat(newMessage.ChatID, getUserID(c), newMessage.Message)
+	newMessage.OwnerID = getUserID(c)
 	if err == nil {
+		newAlert := models.Alert{
+			AlertType: "NewMessageAdded",
+			Data:      newMessage,
+		}
+		models.UserChannel(getUserID(c)).Submit(newAlert)
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Message created successfully!", "newId": newID})
 		return
 	}
-	newAlert := models.Alert{
-		AlertType: "NewMessageAdded",
-		Data:      newMessage,
-	}
-	models.UserChannel(getUserID(c)).Submit(newAlert)
+
 	{
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}
@@ -324,6 +322,21 @@ func getChat(c *gin.Context) {
 }
 
 /********************************************************************************/
+/*	get the user chat list as a json string										*/
+/*																				*/
+/********************************************************************************/
+func getChatList(c *gin.Context) {
+	jChatList, err := models.GetChatList(getUserID(c))
+	if err == nil {
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat loaded successfully!", "jChatList": jChatList})
+		return
+	}
+	{
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
+	}
+}
+
+/********************************************************************************/
 /*	get the realtime stream 													*/
 /*																				*/
 /********************************************************************************/
@@ -338,8 +351,10 @@ func stream(c *gin.Context) {
 		select {
 		case <-clientGone:
 			return false
-		case message := <-listener:
-			c.SSEvent("message", message)
+		case mes := <-listener:
+			fmt.Println(mes)
+			alert := mes.(models.Alert)
+			c.SSEvent(alert.AlertType, alert.Data)
 			return true
 		}
 	})

@@ -1,3 +1,4 @@
+
 p, *, /Chat/login, GET
 p, user, /Chat/logout, GET
 
@@ -7,6 +8,7 @@ p, user, /Chat/SendMessageToChat, POST
 p, user, /Chat/JoinToChat, POST
 p, user, /Chat/AddMemberToChat, POST
 p, user, /Chat/GetChat, POST
+p, user, /Chat/GetChatList , POST
 p, user, /Chat/Stream, GET
 
 g, admin@e.c, user
