@@ -13,42 +13,47 @@
             //var str = String.fromCharCode.apply(String, data);
             var jso=JSON.parse(data.jChatList);
                 jso.forEach(element => {
-                    console.log(element);
+                    //console.log(element);
                     addToChatList(element);
                 });
-               // console.log(jso);
+               // //console.log(jso);
             });
 
             if (!!window.EventSource) {
                 var source = new EventSource('/Chat/Stream');
                 source.addEventListener('AddedToChat', function(e) {
                     var data=JSON.parse(e.data);
-                    console.log(data)
+                    //console.log(data)
                      addToChatList(data);
                     //var data = JSON.parse(msg.data);
                     //
                 }, false);
 
                 source.addEventListener('JoinedToChat', function(e) {
-                    console.log(e)
+                    //console.log(e)
                     //var data = JSON.parse(msg.data);
-                    //console.log(data)
+                    ////console.log(data)
                 }, false);
 
                 source.addEventListener('NewMessageAdded', function(e) {
-                    console.log("new message add")
+                    ////console.log("new message add")
                     var data=JSON.parse(e.data);
-                    console.log(data)
-                     addToMessageList(data);
+                    ////console.log(data)
+                    if(data.chatId==document.getElementById("messageListId").value){
+                        addToMessageList(data);
+                    }else{
+                        document.getElementById("badge"+data.chatId).innerText="new";
+                    }
+                    
                     //var data = JSON.parse(msg.data);
-                    //console.log(data)
+                    ////console.log(data)
                 }, false);
 
                 source.addEventListener('NewChatCreated', function(e) {
                     var data=JSON.parse(e.data);
                     addToChatList(data);
                     //var data = JSON.parse(msg.data);
-                    console.log(data)
+                    //console.log(data)
                 }, false);
             } else {
                 alert("NOT SUPPORTED");
@@ -59,7 +64,7 @@
             var posting = $.post( "/Chat/GetChat" , { chatId: chatId});
             posting.done(function( data ) {
                 var jChat=JSON.parse(data.jChat);
-                console.log(jChat)
+                //console.log(jChat)
                 if(jChat.MessageList!=null){
                     document.getElementById("messageListId").innerHTML=""
                     jChat.MessageList.forEach(element => {
@@ -71,7 +76,8 @@
                 jChat.MemberList.forEach(element => {
                     addToMemberList(element)
                 });
-
+                document.getElementById("messageListId").value=chatId;
+                document.getElementById("badge"+chatId).innerHTML="";
                 document.getElementById("sendNewMessageButtonId").onclick=function() { 
                     clickSendNewMessage(chatId) }
             });
@@ -95,15 +101,23 @@
             textnode.value=item.ID;
             node.appendChild(textnode);
             document.getElementById("messageListId").appendChild(node);
+            
             }
 
         function addToChatList(item) {
-            var node = document.createElement("BUTTON");
+            var node = document.createElement("LI");
             node.className="list-group-item"
             node.id=item.ID
             node.onclick=function() { loadChat(item.ID) }
             var textnode = document.createTextNode(item.Title);
             textnode.value=item.ID;
+
+            var badgeNode = document.createElement("span");
+            badgeNode.className="badge";
+            badgeNode.innerText="";
+            badgeNode.id="badge"+item.ID;
+            node.appendChild(badgeNode);
+
             node.appendChild(textnode);
             document.getElementById("listId").appendChild(node);
             }
@@ -180,7 +194,7 @@
                         <button class="btn btn-default form-control col-sm-3" id="sendNewMessageButtonId">Send</button>
                     </div>
                     <div>
-                    <ul  class="list-group" id="messageListId">
+                    <ul  class="list-group" id="messageListId" value="8838kkdjjd">
                     </ul> </div>
                 </div>
                 <div class="col-sm-3">

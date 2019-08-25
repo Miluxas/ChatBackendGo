@@ -179,8 +179,7 @@ func startNewPeerChat(c *gin.Context) {
 		AlertType: "NewChatCreated",
 		Data:      newChat,
 	}
-	//models.UserChannel(getUserID(c)).Submit(newAlert)
-	models.UserChannel(newChat.PeerUserID).Submit(newAlert)
+	models.SendAlertToMember(newChatID, newAlert)
 	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
 }
 
@@ -204,7 +203,8 @@ func startNewGroupChat(c *gin.Context) {
 		AlertType: "NewChatCreated",
 		Data:      newGroupChat,
 	}
-	models.UserChannel(getUserID(c)).Submit(newAlert)
+	models.SendAlertToMember(newChatID, newAlert)
+
 	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
 }
 
@@ -231,7 +231,7 @@ func sendMessageToChat(c *gin.Context) {
 			AlertType: "NewMessageAdded",
 			Data:      newMessage,
 		}
-		models.UserChannel(getUserID(c)).Submit(newAlert)
+		models.SendAlertToMember(newMessage.ChatID, newAlert)
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Message created successfully!", "newId": newID})
 		return
 	}
@@ -264,7 +264,7 @@ func joinToChat(c *gin.Context) {
 		AlertType: "JoinedToChat",
 		Data:      chat,
 	}
-	models.UserChannel(getUserID(c)).Submit(newAlert)
+	models.SendAlertToMember(chat.ChatID, newAlert)
 	{
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}
@@ -294,8 +294,7 @@ func addMemberToChat(c *gin.Context) {
 		AlertType: "AddedToChat",
 		Data:      newMember,
 	}
-	models.UserChannel(getUserID(c)).Submit(newAlert)
-	models.UserChannel(newMember.UserID).Submit(newAlert)
+	models.SendAlertToMember(newMember.ChatID, newAlert)
 	{
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}
@@ -352,7 +351,7 @@ func stream(c *gin.Context) {
 		case <-clientGone:
 			return false
 		case mes := <-listener:
-			fmt.Println(mes)
+			//fmt.Println(mes)
 			alert := mes.(models.Alert)
 			c.SSEvent(alert.AlertType, alert.Data)
 			return true

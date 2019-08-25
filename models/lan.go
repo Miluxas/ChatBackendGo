@@ -294,6 +294,20 @@ func AddOtherUserToChat(chatID, currentUserID, userID string) (string, error) {
 	return newID, nil
 }
 
+//SendAlertToMember send a alert to all member of chat
+func SendAlertToMember(chatID string, newAlert interface{}) {
+	chat, err := getChatFromID(chatID)
+	if err != nil {
+		return
+	}
+	for _, v := range chat.MemberList {
+		if v.MemberStatus == MEMBER_STATUS__NORMAL {
+			UserChannel(v.UserID).Submit(newAlert)
+		}
+	}
+
+}
+
 //GetChat return a chat as json byte array
 func GetChat(chatID, currentUserID string) (string, error) {
 	chat, err := getChatFromID(chatID)
@@ -312,7 +326,7 @@ func GetChat(chatID, currentUserID string) (string, error) {
 	}
 	//fmt.Println(chat, *chat)
 	jChat, err := json.Marshal(*chat)
-	fmt.Println(string(jChat))
+	//fmt.Println(string(jChat))
 	if err != nil {
 		return "", err
 	}
