@@ -10,6 +10,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 
+	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/miluxas/ChatBackendGo/models"
 )
@@ -21,6 +22,7 @@ func main() {
 	store := cookie.NewStore([]byte("secret"))
 	router.Use(sessions.Sessions("mysession", store))
 	router.LoadHTMLGlob("*.html")
+	router.Use(static.Serve("/js/", static.LocalFile("./js", true)))
 	router.GET("/", indexHandler)
 	api := router.Group("/Chat")
 	// no authentication endpoints
@@ -52,8 +54,8 @@ func main() {
 
 func indexHandler(c *gin.Context) {
 	c.HTML(http.StatusOK, "index.html", nil)
-	//c.JSON(http.StatusOK, gin.H{"message": "authentication successful"})
 }
+
 func checkUserAuthentication(auths ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
