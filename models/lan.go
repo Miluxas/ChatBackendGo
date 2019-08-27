@@ -310,10 +310,12 @@ func SendAlertToMember(chatID string, newAlert interface{}) {
 
 //GetChat return a chat as json byte array
 func GetChat(chatID, currentUserID string) (string, error) {
-	chat, err := getChatFromID(chatID)
+	chatf, err := getChatFromID(chatID)
 	if err != nil {
 		return "", err
 	}
+	chat := chatf
+
 	isUserMemberOfChat := false
 	for _, v := range chat.MemberList {
 		if v.UserID == currentUserID {
@@ -323,6 +325,13 @@ func GetChat(chatID, currentUserID string) (string, error) {
 	}
 	if !isUserMemberOfChat {
 		return "", fmt.Errorf("User isn't member of chat")
+	}
+	if chat.ChatType == Chat_Type__Peer {
+		if chat.MemberList[0].UserID == currentUserID {
+			chat.Title = chat.MemberList[1].UserID
+		} else {
+			chat.Title = chat.MemberList[0].UserID
+		}
 	}
 	//fmt.Println(chat, *chat)
 	jChat, err := json.Marshal(*chat)

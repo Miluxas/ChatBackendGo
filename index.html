@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en-us" style="height: 100%">
+
 <head>
     <meta charset="utf-8">
     <title>Hackathon</title>
@@ -7,146 +8,161 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
     <script type="text/javascript">
-        var chatListResult = $.post( "/Chat/GetChatList" );
-        chatListResult.done(function( data ) {
+        var chatListResult = $.post("/Chat/GetChatList");
+        chatListResult.done(function (data) {
             //var str = String.fromCharCode.apply(String, data);
-            var jso=JSON.parse(data.jChatList);
-                jso.forEach(element => {
-                    //console.log(element);
-                    addToChatList(element);
-                });
-               // //console.log(jso);
+            var jso = JSON.parse(data.jChatList);
+            jso.forEach(element => {
+                //console.log(element);
+                addToChatList(element);
             });
+            // //console.log(jso);
+        });
 
-            if (!!window.EventSource) {
-                var source = new EventSource('/Chat/Stream');
-                source.addEventListener('AddedToChat', function(e) {
-                    var data=JSON.parse(e.data);
-                    //console.log(data)
-                     addToChatList(data);
-                    //var data = JSON.parse(msg.data);
-                    //
-                }, false);
+        if (!!window.EventSource) {
+            var source = new EventSource('/Chat/Stream');
+            source.addEventListener('AddedToChat', function (e) {
+                var data = JSON.parse(e.data);
+                //console.log(data)
+                addToChatList(data);
+                //var data = JSON.parse(msg.data);
+                //
+            }, false);
 
-                source.addEventListener('JoinedToChat', function(e) {
-                    //console.log(e)
-                    //var data = JSON.parse(msg.data);
-                    ////console.log(data)
-                }, false);
+            source.addEventListener('JoinedToChat', function (e) {
+                //console.log(e)
+                //var data = JSON.parse(msg.data);
+                ////console.log(data)
+            }, false);
 
-                source.addEventListener('NewMessageAdded', function(e) {
-                    ////console.log("new message add")
-                    var data=JSON.parse(e.data);
-                    ////console.log(data)
-                    if(data.chatId==document.getElementById("messageListId").value){
-                        addToMessageList(data);
-                    }else{
-                        document.getElementById("badge"+data.chatId).innerText="new";
-                    }
-                    
-                    //var data = JSON.parse(msg.data);
-                    ////console.log(data)
-                }, false);
-
-                source.addEventListener('NewChatCreated', function(e) {
-                    var data=JSON.parse(e.data);
-                    addToChatList(data);
-                    //var data = JSON.parse(msg.data);
-                    //console.log(data)
-                }, false);
-            } else {
-                alert("NOT SUPPORTED");
-            }
-
-
-        function loadChat(chatId){
-            var posting = $.post( "/Chat/GetChat" , { chatId: chatId});
-            posting.done(function( data ) {
-                var jChat=JSON.parse(data.jChat);
-                //console.log(jChat)
-                if(jChat.MessageList!=null){
-                    document.getElementById("messageListId").innerHTML=""
-                    jChat.MessageList.forEach(element => {
-                    addToMessageList(element)
-                });
+            source.addEventListener('NewMessageAdded', function (e) {
+                ////console.log("new message add")
+                var data = JSON.parse(e.data);
+                ////console.log(data)
+                if (data.chatId == document.getElementById("messageListId").value) {
+                    addToMessageList(data);
+                } else {
+                    document.getElementById("badge" + data.chatId).innerText = "new";
                 }
-                
-                document.getElementById("memberListId").innerHTML=""
+
+                //var data = JSON.parse(msg.data);
+                ////console.log(data)
+            }, false);
+
+            source.addEventListener('NewChatCreated', function (e) {
+                var data = JSON.parse(e.data);
+                addToChatList(data);
+                //var data = JSON.parse(msg.data);
+                //console.log(data)
+            }, false);
+        } else {
+            alert("NOT SUPPORTED");
+        }
+
+
+        function loadChat(chatId) {
+            var posting = $.post("/Chat/GetChat", { chatId: chatId });
+            posting.done(function (data) {
+                var jChat = JSON.parse(data.jChat);
+                //console.log(jChat)
+                document.getElementById("messageListId").innerHTML = ""
+                if (jChat.MessageList != null) {
+                    
+                    jChat.MessageList.forEach(element => {
+                        addToMessageList(element)
+                    });
+                }
+
+                document.getElementById("memberListId").innerHTML = ""
                 jChat.MemberList.forEach(element => {
                     addToMemberList(element)
                 });
-                document.getElementById("messageListId").value=chatId;
-                document.getElementById("badge"+chatId).innerHTML="";
-                document.getElementById("sendNewMessageButtonId").onclick=function() { 
-                    clickSendNewMessage(chatId) }
+                document.getElementById("messageListId").value = chatId;
+                document.getElementById("badge" + chatId).innerHTML = "";
+                document.getElementById("chatTitleLabelId").innerHTML = jChat.Title;
+                document.getElementById("sendNewMessageButtonId").onclick = function () {
+                    clickSendNewMessage(chatId)
+                }
             });
         }
-        
+
         function addToMemberList(item) {
             var node = document.createElement("LI");
-            node.className="list-group-item"
-            node.id=item.ID
+            node.className = "list-group-item"
+            node.id = item.ID
             var textnode = document.createTextNode(item.UserID);
-            textnode.value=item.ID;
+            textnode.value = item.ID;
             node.appendChild(textnode);
             document.getElementById("memberListId").appendChild(node);
-            }
-        
+        }
+
         function addToMessageList(item) {
-            var node = document.createElement("LI");
-            node.className="list-group-item"
-            node.id=item.ID
+            var node = document.createElement("div");
+            node.className = "p-2 bd-highlight flex-shrink-0"
+            node.style = "width:100%  "
+            node.id = item.ID
             var textnode = document.createTextNode(item.Content);
-            textnode.value=item.ID;
+            textnode.value = item.ID;
             node.appendChild(textnode);
             document.getElementById("messageListId").appendChild(node);
-            
-            }
+
+        }
 
         function addToChatList(item) {
             var node = document.createElement("LI");
-            node.className="list-group-item"
-            node.id=item.ID
-            node.onclick=function() { loadChat(item.ID) }
+            node.className = "list-group-item"
+            node.id = item.ID
+            node.onclick = function () { loadChat(item.ID) }
             var textnode = document.createTextNode(item.Title);
-            textnode.value=item.ID;
+            textnode.value = item.ID;
 
             var badgeNode = document.createElement("span");
-            badgeNode.className="badge";
-            badgeNode.innerText="";
-            badgeNode.id="badge"+item.ID;
+            badgeNode.className = "badge";
+            badgeNode.innerText = "";
+            badgeNode.id = "badge" + item.ID;
             node.appendChild(badgeNode);
 
             node.appendChild(textnode);
             document.getElementById("listId").appendChild(node);
-            }
+        }
 
 
 
-            function clickLogin(){
-            var posting = $.post( "/Chat/login", { username: $('#username').val(), password: $('#pwd').val() } );
-            posting.done(function( data ) {
+        function clickLogin() {
+            var posting = $.post("/Chat/login", { username: $('#username').val(), password: $('#pwd').val() });
+            posting.done(function (data) {
                 alert('success');
             });
         }
 
-        function clickSendNewMessage(chatId){
-            var posting = $.post( "/Chat/SendMessageToChat", { chatId: chatId, message: $('#newMessageId').val() } );
-            posting.done(function( data ) {
+        function clickSendNewMessage(chatId) {
+            var posting = $.post("/Chat/SendMessageToChat", { chatId: chatId, message: $('#newMessageId').val() });
+            posting.done(function (data) {
+                $('#newMessageId').val("");
             });
-}
+        }
 
-        function clickLogout(){
-            var posting = $.get( "/Chat/logout");
-            posting.done(function( data ) {
+        function clickLogout() {
+            var posting = $.get("/Chat/logout");
+            posting.done(function (data) {
                 alert('success');
             });
         }
-        function createPeerChat(){
-            var posting = $.post( "/Chat/CreateNewChat", { title: $('#chatNameId').val(), peerUserId: $('#peerUserId').val() } );
-            posting.done(function( data ) {
-                alert('success');
+        function createPeerChat() {
+            var posting = $.post("/Chat/CreateNewChat", { title: $('#peerUserId ').val(), peerUserId: $('#peerUserId').val() });
+            posting.done(function (data) {
+                $('#peerUserId').val("");
+                loadChat(data.newChatID);
             });
         }
 
@@ -154,55 +170,80 @@
     </script>
 </head>
 
-<body>
-        <div class="container">
-            <div class="row" style="text-align: center">
-                <div class="col-sm-3 form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" class="form-control" id="username" name="username">
-                </div>
-                <div class="col-sm-3 form-group">
-                    <label for="pwd">Password:</label>
-                    <input type="password" class="form-control" id="pwd" name="password">
-                </div>
-                <div class="col-sm-3">
-                    <button class="btn btn-default form-control" onclick="clickLogin()">Login</button>
-                </div>
-                <div class="col-sm-3">
-                    <button class="btn btn-default form-control" onclick="clickLogout()">Logout</button>
-                </div>
-            </div>
-            <div class="row">
-            <div class="col-sm-3" style="background-color: cadetblue">
+<body class="h-100">
+    <div class="container h-100" style="    display: flex; 
+    flex-direction: column;  
+    align-items: stretch; ">
+        <div class="row justify-content-md-center">
 
-                    <input type="text" class="form-control" placeholder="Chat Name" id="chatNameId" >
-                    
-                    <input type="email" class="form-control" placeholder="Peer User ID" id="peerUserId" >
- 
-                    <button class="btn btn-default form-control" onclick="createPeerChat()">Create</button>
-                <div>
-                        <ul  class="list-group" id="listId">
-                            </ul> 
+            <div class="input-group col-4">
+                <input type="text" class="form-control" placeholder="username" id="username" name="username">
+                <input type="password" class="form-control" placeholder="password" id="pwd" name="password">
+                <div class="input-group-append" id="button-addon4">
+                    <button class="btn btn-outline-secondary" type="button" onclick="clickLogin()">Login</button>
+                    <button class="btn btn-outline-secondary" type="button" onclick="clickLogout()">Logout</button>
                 </div>
+            </div>
 
-            </select>
-            </div>
-            <div class="col-sm-9">
-                <div class="col-sm-9">
-                    <div class="row">
-                        <input type="text" class="col-sm-9 form-control" placeholder="Message" id="newMessageId" >
-                        <button class="btn btn-default form-control col-sm-3" id="sendNewMessageButtonId">Send</button>
-                    </div>
-                    <div>
-                    <ul  class="list-group" id="messageListId" value="8838kkdjjd">
-                    </ul> </div>
-                </div>
-                <div class="col-sm-3">
-                    <ul  class="list-group" id="memberListId">
-                    </ul> 
-                </div>
-                
-            </div>
         </div>
+        <div class="row h-100">
+            <div class="col-3">
+
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" placeholder="User ID" id="peerUserId">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="button"
+                            onclick="createPeerChat()">Create</button> </div>
+                </div>
+                <div>
+                    <p> Chat List </p>
+                    <ul class="list-group" id="listId">
+                    </ul>
+                </div>
+
+                </select>
+            </div>
+            <div class="col-9" style="height: 100%;padding: 0px;margin: 0px">
+                <div class="row" style="height: 100%;padding: 0px;margin: 0px">
+                    <div class="col-10"
+                        style="height: 100%;padding: 5px;border-width:1px;border-style:solid; border-radius:5px">
+
+                        <div id="chatTitleLabelId" class="alert alert-primary"
+                            style="position:absolute; height: 30px; top: 0px;width:100%;left: 0px;right: 0px;padding: 5px; text-align: center">
+                            
+                        </div>
+
+                        <div class="overflow-auto"
+                            style="position:absolute; top:30px ;bottom: 35px;width:100%;left: 0px;right: 0px">
+                            <div id="messageListId" class="d-flex flex-column bd-highlight w-100 position-absolute"
+                                style="bottom: 0px">
+                            </div>
+                        </div>
+                        <div
+                            style="position:absolute; height: 35px; bottom: 0px;width:100%;left: 0px;right: 0px;padding: 5px">
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" placeholder="Message" id="newMessageId"
+                                    aria-label="Example text with button addon" aria-describedby="button-addon1">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        id="sendNewMessageButtonId">Send</button> </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <div class="col-2">
+                        <ul class="list-group" id="memberListId">
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+
+
+        </div>
+    </div>
 </body>
+
 </html>
