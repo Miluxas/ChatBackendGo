@@ -122,22 +122,22 @@ func loginHandler(c *gin.Context) {
 		return
 	}
 	session := sessions.Default(c)
-	userID := models.AuthenticateUser(user.Username, user.Password)
+	userI := models.AuthenticateUser(user.Username, user.Password)
 
 	if strings.Trim(user.Username, " ") == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "username can't be empty"})
 	}
-	if userID == "__" {
+	if userI.ID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid auth type"})
 	}
-	session.Set("user", userID)
+	session.Set("user", userI.ID)
 	err := session.Save()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate session token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "authentication successful"})
+	c.JSON(http.StatusOK, gin.H{"message": "authentication successful", "usr": userI})
 }
 
 /********************************************************************************/
@@ -190,8 +190,9 @@ func startNewPeerChat(c *gin.Context) {
 /*																				*/
 /********************************************************************************/
 type newGroupChat struct {
-	Title    string `form:"title" json:"title" xml:"title" binding:"required"`
+	Title    string `form:"title" json:"Title" xml:"title" binding:"required"`
 	ChatType string `form:"chatType" json:"chatType" xml:"chatType" binding:"required"`
+	ID       string
 }
 
 func startNewGroupChat(c *gin.Context) {
@@ -201,6 +202,7 @@ func startNewGroupChat(c *gin.Context) {
 		return
 	}
 	newChatID := models.StartNewGroupChat(newGroupChat.Title, getUserID(c), newGroupChat.ChatType)
+	newGroupChat.ID = newChatID
 	newAlert := models.Alert{
 		AlertType: "NewChatCreated",
 		Data:      newGroupChat,
@@ -259,14 +261,15 @@ func joinToChat(c *gin.Context) {
 	}
 	newID, err := models.JoinToChat(chat.ChatID, getUserID(c))
 	if err == nil {
+		newAlert := models.Alert{
+			AlertType: "JoinedToChat",
+			Data:      chat,
+		}
+		models.SendAlertToMember(chat.ChatID, newAlert)
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "joined to chat successfully!", "newId": newID})
 		return
 	}
-	newAlert := models.Alert{
-		AlertType: "JoinedToChat",
-		Data:      chat,
-	}
-	models.SendAlertToMember(chat.ChatID, newAlert)
+
 	{
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}
@@ -277,8 +280,9 @@ func joinToChat(c *gin.Context) {
 /*																				*/
 /********************************************************************************/
 type newMember struct {
-	ChatID string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
-	UserID string `form:"userId" json:"userId" xml:"userId" binding:"required"`
+	ChatID string `form:"chatId" json:"ID" xml:"chatId" binding:"required"`
+	UserID string `form:"userId" json:"UserID" xml:"userId" binding:"required"`
+	Title  string
 }
 
 func addMemberToChat(c *gin.Context) {
@@ -287,16 +291,22 @@ func addMemberToChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newID, err := models.AddOtherUserToChat(newMember.ChatID, getUserID(c), newMember.UserID)
+	title, newID, err := models.AddOtherUserToChat(newMember.ChatID, getUserID(c), newMember.UserID)
 	if err == nil {
+		newMember.Title = title
+		newAlert := models.Alert{
+			AlertType: "AddedToChat",
+			Data:      newMember,
+		}
+		models.SendAlertToOneMember(newMember.UserID, newAlert)
+
+		newAlert.AlertType = "NewMemberAdded"
+		models.SendAlertToMember(newMember.ChatID, newAlert)
+
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "new member added successfully!", "newId": newID})
 		return
 	}
-	newAlert := models.Alert{
-		AlertType: "AddedToChat",
-		Data:      newMember,
-	}
-	models.SendAlertToMember(newMember.ChatID, newAlert)
+
 	{
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
 	}

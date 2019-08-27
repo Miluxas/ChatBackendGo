@@ -42,31 +42,31 @@ const (
 )
 
 var ChatList []chat
-var users = []user{user{
+var users = []User{User{
 	ID:        "admin@e.c",
 	FirstName: "admin",
 	LastName:  "admini",
 	username:  "admin",
 	password:  "admin",
-}, user{
+}, User{
 	ID:        "normal@e.c",
 	FirstName: "normalUser",
 	LastName:  "lastNormal",
 	username:  "normal",
 	password:  "normal",
-}, user{
+}, User{
 	ID:        "kalim@e.c",
 	FirstName: "karim",
 	LastName:  "Aq Mangool",
 	username:  "kalim",
 	password:  "kalim",
-}, user{
+}, User{
 	ID:        "solivan@e.c",
 	FirstName: "solivan",
 	LastName:  "sol",
 	username:  "solivan",
 	password:  "solivan",
-}, user{
+}, User{
 	ID:        "ferzin@e.c",
 	FirstName: "ferzin",
 	LastName:  "feriiii",
@@ -124,7 +124,7 @@ type member struct {
 	MemberStatus MemberStatus
 }
 
-type user struct {
+type User struct {
 	ID        string
 	FirstName string
 	LastName  string
@@ -163,15 +163,15 @@ func getChatFromID(chatID string) (*chat, error) {
 }
 
 //AuthenticateUser authenticate user
-func AuthenticateUser(username, password string) string {
+func AuthenticateUser(username, password string) User {
 	for _, usr := range users {
 		if usr.username == username && usr.password == password {
 			//currentUser = usr
-			return usr.ID
+			return usr
 		}
 	}
-	//currentUser = user{}
-	return "__"
+	//currentUser = User{}
+	return User{}
 }
 
 //StartNewPeerChat start new peer to peer chat with peerUser
@@ -275,11 +275,11 @@ func JoinToChat(chatID, currentUserID string) (string, error) {
 }
 
 //AddOtherUserToChat add other user to a chat
-func AddOtherUserToChat(chatID, currentUserID, userID string) (string, error) {
+func AddOtherUserToChat(chatID, currentUserID, userID string) (string, string, error) {
 
 	chat, err := getChatFromID(chatID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	newID := createUniqID()
 	newMember := member{
@@ -291,7 +291,7 @@ func AddOtherUserToChat(chatID, currentUserID, userID string) (string, error) {
 	}
 
 	chat.addMember(&newMember)
-	return newID, nil
+	return chat.Title, newID, nil
 }
 
 //SendAlertToMember send a alert to all member of chat
@@ -306,6 +306,11 @@ func SendAlertToMember(chatID string, newAlert interface{}) {
 		}
 	}
 
+}
+
+//SendAlertToOneMember send a alert to a member
+func SendAlertToOneMember(userID string, newAlert interface{}) {
+	UserChannel(userID).Submit(newAlert)
 }
 
 //GetChat return a chat as json byte array
