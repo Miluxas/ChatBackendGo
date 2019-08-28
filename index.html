@@ -54,7 +54,7 @@
                 var data = JSON.parse(e.data);
                 console.log(data)
                 addToMemberList(data);
-                
+
                 //var data = JSON.parse(msg.data);
                 //
             }, false);
@@ -63,7 +63,7 @@
                 var data = JSON.parse(e.data);
                 console.log(data)
                 addToChatList(data);
-                
+
                 //var data = JSON.parse(msg.data);
                 //
             }, false);
@@ -88,7 +88,7 @@
                 ////console.log(data)
             }, false);
 
-//                addToMemberList(data);
+            //                addToMemberList(data);
 
             source.addEventListener('NewChatCreated', function (e) {
                 var data = JSON.parse(e.data);
@@ -129,12 +129,12 @@
                     addMemberToGroupChat(chatId)
                 };
 
-                if(jChat.ChatType=="PEER"){
-                    document.getElementById("chatInnerPanelId").className="col-12";
-                    document.getElementById("chatInnerMemberPanelId").className="hidden";
-                }else{
-                    document.getElementById("chatInnerPanelId").className="col-9";
-                    document.getElementById("chatInnerMemberPanelId").className="col-3";
+                if (jChat.ChatType == "PEER") {
+                    document.getElementById("chatInnerPanelId").className = "col-12";
+                    document.getElementById("chatInnerMemberPanelId").className = "hidden";
+                } else {
+                    document.getElementById("chatInnerPanelId").className = "col-9";
+                    document.getElementById("chatInnerMemberPanelId").className = "col-3";
                 }
 
 
@@ -165,9 +165,13 @@
 
         function addToChatList(item) {
             //console.log(item);
-            var node = document.createElement("LI");
-            node.className = "list-group-item"
-            node.id = item.ID
+            var node = document.createElement("div");
+            if(item.ChatType=="PEER")
+            node.className = "alert alert-primary";
+            else
+            node.className = "alert alert-info";
+
+            node.id = item.ID;
             node.onclick = function () { loadChat(item.ID) }
             var textnode = document.createTextNode(item.Title);
             textnode.value = item.ID;
@@ -212,7 +216,7 @@
                 document.location.reload();
             });
         }
-        
+
         function createPeerChat() {
             var posting = $.post("/Chat/CreateNewChat", { title: $('#peerUserId ').val(), peerUserId: $('#peerUserId').val() });
             posting.done(function (data) {
@@ -263,23 +267,23 @@
     align-items: stretch; visibility: hidden;">
         <div class="row h-100">
             <div class="col-3">
-<div class="input-group">
-                <h3>
-                        <script>document.write(sessionStorage.getItem("usrFn"))</script> 
-                </h3>
-                <button class="btn btn-outline-secondary" type="button" onclick="clickLogout()">Logout</button>
-            </div>
-                <div class="input-group mb-3">
-                    <input type="text" class="form-control" placeholder="User ID" id="peerUserId">
+                <div class="input-group">
+                    <h3>
+                        <script>document.write(sessionStorage.getItem("usrFn"))</script>
+                    </h3>
+                    <button class="btn btn-outline-secondary" type="button" onclick="clickLogout()">Logout</button>
+                </div>
+                <div class="input-group mb-3 alert-primary">
+                    <input type="text" class="form-control" placeholder="User ID" id="peerUserId" style="background: transparent">
                     <div class="input-group-append">
                         <button class="btn btn-outline-secondary" type="button"
                             onclick="createPeerChat()">Create</button> </div>
                 </div>
 
 
-                <div class="input-group mb-3">
+                <div class="input-group mb-3 alert-info">
                     <div class="input-group-prepend">
-                        <select class="custom-select" id="inputGroupSelect01">
+                        <select class="custom-select" id="inputGroupSelect01" style="background: transparent">
                             <option selected>Choose...</option>
                             <option value="PUBLIC_GROUP">Public Group</option>
                             <option value="PUBLIC_CANNAL">Public Channel</option>
@@ -289,7 +293,7 @@
                     </div>
 
 
-                    <input type="text" class="form-control" placeholder="Title" id="groupTitleId">
+                    <input type="text" class="form-control" placeholder="Title" id="groupTitleId" style="background: transparent">
                     <div class="input-group-append">
                         <button class="btn btn-outline-secondary" type="button"
                             onclick="createGroupChat()">Create</button> </div>
@@ -297,13 +301,14 @@
 
                 <div>
                     <p> Chat List </p>
-                    <ul class="list-group" id="listId">
-                    </ul>
+                    <div class="list-group" id="listId">
+                    </div>
                 </div>
 
                 </select>
             </div>
-            <div class="col-9" style="height: 100%;padding: 5px;margin: 0px;border-width:1px;border-style:solid; border-radius:5px;border-color: slategrey">
+            <div class="col-9"
+                style="height: 100%;padding: 5px;margin: 0px;border-width:1px;border-style:solid; border-radius:5px;border-color: slategrey">
                 <div class="row" style="height: 100%;padding: 0px;margin: 0px">
                     <div id="chatInnerPanelId" class="hidden"
                         style="height: 100%;padding: 5px;border-width:1px;border-style:solid; border-radius:5px">
@@ -337,11 +342,12 @@
                         <p>
                             Add New User
                         </p>
-                            <div class="input-group mb-3">
-                                    <input type="text" class="form-control" placeholder="User ID" id="addNewMemberUserId">
-                                    <div class="input-group-append">
-                                        <button id="addNewMemberButtonId" class="btn btn-outline-secondary" type="button">Add</button> </div>
-                                </div>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" placeholder="User ID" id="addNewMemberUserId">
+                            <div class="input-group-append">
+                                <button id="addNewMemberButtonId" class="btn btn-outline-secondary"
+                                    type="button">Add</button> </div>
+                        </div>
                         <ul class="list-group" id="memberListId">
                         </ul>
                     </div>
