@@ -42,13 +42,14 @@ func main() {
 			basicAuth.POST("/SendMessageToChat", sendMessageToChat)
 			basicAuth.POST("/JoinToChat", joinToChat)
 			basicAuth.POST("/AddMemberToChat", addMemberToChat)
+			basicAuth.POST("/LeaveFromChat", leaveFromChat)
 			basicAuth.POST("/GetChat", getChat)
 			basicAuth.POST("/GetChatList", getChatList)
 			basicAuth.GET("/Stream", stream)
 		}
 	}
 
-	router.Run(":3030")
+	router.Run(":3031")
 	//http.ListenAndServe(":3000", nil)
 }
 
@@ -250,7 +251,8 @@ func sendMessageToChat(c *gin.Context) {
 /*																				*/
 /********************************************************************************/
 type chat struct {
-	ChatID string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
+	ChatID   string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
+	MemberID string
 }
 
 func joinToChat(c *gin.Context) {
@@ -279,31 +281,57 @@ func joinToChat(c *gin.Context) {
 /*	add a new member to a chat													*/
 /*																				*/
 /********************************************************************************/
-type newMember struct {
+type member struct {
 	ChatID string `form:"chatId" json:"ID" xml:"chatId" binding:"required"`
 	UserID string `form:"userId" json:"UserID" xml:"userId" binding:"required"`
 	Title  string
 }
 
 func addMemberToChat(c *gin.Context) {
-	newMember := newMember{}
-	if err := c.ShouldBind(&newMember); err != nil {
+	member := member{}
+	if err := c.ShouldBind(&member); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	title, newID, err := models.AddOtherUserToChat(newMember.ChatID, getUserID(c), newMember.UserID)
+	title, newID, err := models.AddOtherUserToChat(member.ChatID, getUserID(c), member.UserID)
 	if err == nil {
-		newMember.Title = title
+		member.Title = title
 		newAlert := models.Alert{
 			AlertType: "AddedToChat",
-			Data:      newMember,
+			Data:      member,
 		}
-		models.SendAlertToOneMember(newMember.UserID, newAlert)
+		models.SendAlertToOneMember(member.UserID, newAlert)
 
 		newAlert.AlertType = "NewMemberAdded"
-		models.SendAlertToMember(newMember.ChatID, newAlert)
+		models.SendAlertToMember(member.ChatID, newAlert)
 
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "new member added successfully!", "newId": newID})
+		return
+	}
+
+	{
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
+	}
+}
+
+func leaveFromChat(c *gin.Context) {
+	chat := chat{}
+	if err := c.ShouldBind(&chat); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	leftUserID, leftMemberID, err := models.LeaveChat(chat.ChatID, getUserID(c))
+	if err == nil {
+		chat.MemberID = leftMemberID
+		newAlert := models.Alert{
+			AlertType: "MemberLeftChat",
+			Data:      chat,
+		}
+		models.SendAlertToMember(chat.ChatID, newAlert)
+		newAlert.AlertType = "LeftChat"
+		models.SendAlertToOneMember(leftUserID, newAlert)
+
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "member left chat successfully!"})
 		return
 	}
 

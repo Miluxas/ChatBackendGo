@@ -14,9 +14,6 @@ func init() {
 
 }
 
-//ChatType is type of chat
-type ChatType int
-
 //MemberType is type of member in chat
 type MemberType int
 
@@ -102,7 +99,8 @@ func (ch *chat) addMember(newMem *member) {
 
 func (ch *chat) findMember(userID string) bool {
 	for _, v := range ch.MemberList {
-		if v.UserID == userID {
+		if v.UserID == userID && v.MemberStatus == MEMBER_STATUS__NORMAL {
+			//fmt.Println(v)
 			return true
 		}
 	}
@@ -274,6 +272,25 @@ func JoinToChat(chatID, currentUserID string) (string, error) {
 	return newID, nil
 }
 
+//LeaveChat leave user from a chat
+func LeaveChat(chatID, currentUserID string) (string, string, error) {
+
+	chat, err := getChatFromID(chatID)
+	if err != nil {
+		return "", "", err
+	}
+	for ind, v := range chat.MemberList {
+		if v.UserID == currentUserID {
+			chat.MemberList[ind].MemberStatus = MEMBER_STATUS__LEFT
+			//fmt.Println(chat)
+			return v.UserID, v.ID, nil
+		}
+	}
+	fmt.Println(chat)
+
+	return "", "", nil
+}
+
 //AddOtherUserToChat add other user to a chat
 func AddOtherUserToChat(chatID, currentUserID, userID string) (string, string, error) {
 
@@ -352,6 +369,7 @@ func GetChatList(currentUserID string) (string, error) {
 	var tmpList []chat
 	for _, v := range ChatList {
 		if v.findMember(currentUserID) {
+
 			tmpList = append(tmpList, v)
 		}
 	}
