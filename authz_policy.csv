@@ -11,6 +11,7 @@ p, user, /Chat/GetChat, POST
 p, user, /Chat/GetChatList , POST
 p, user, /Chat/LeaveFromChat , POST
 p, user, /Chat/BlockChat , POST
+p, user, /Chat/ChangeMemberStatus , POST
 p, user, /Chat/Stream, GET
 
 g, admin@e.c, user
@@ -18,3 +19,5 @@ g, normal@e.c, user
 g, kalim@e.c, user
 g, solivan@e.c, user
 g, ferzin@e.c, user
+g, zohre@e.c, user
+

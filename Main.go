@@ -47,6 +47,7 @@ func main() {
 			basicAuth.POST("/BlockChat", blockChat)
 			basicAuth.POST("/GetChat", getChat)
 			basicAuth.POST("/GetChatList", getChatList)
+			basicAuth.POST("/ChangeMemberStatus", changeMemberStatus)
 			basicAuth.GET("/Stream", stream)
 		}
 	}
@@ -190,11 +191,11 @@ func startNewPeerChat(c *gin.Context) {
 	}
 	models.SendAlertToOneMember(getUserID(c), newAlert)
 	newChat.Title = getUserID(c)
-	newAlert = models.Alert{
+	newAlert2 := models.Alert{
 		AlertType: "NewChatCreated",
 		Data:      newChat,
 	}
-	models.SendAlertToOneMember(newChat.PeerUserID, newAlert)
+	models.SendAlertToOneMember(newChat.PeerUserID, newAlert2)
 	c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Chat created successfully!", "newChatID": newChatID})
 }
 
@@ -267,9 +268,10 @@ func sendMessageToChat(c *gin.Context) {
 /*																				*/
 /********************************************************************************/
 type chat struct {
-	ChatID   string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
-	MemberID string
-	OwnerID  string
+	ChatID    string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
+	MemberID  string `form:"memberID" json:"memberID" xml:"memberID"`
+	OwnerID   string
+	NewStatus string `form:"newStatus" json:"newStatus" xml:"newStatus"`
 }
 
 func joinToChat(c *gin.Context) {
@@ -299,9 +301,10 @@ func joinToChat(c *gin.Context) {
 /*																				*/
 /********************************************************************************/
 type member struct {
-	ChatID string `form:"chatId" json:"ID" xml:"chatId" binding:"required"`
-	UserID string `form:"userId" json:"UserID" xml:"userId" binding:"required"`
-	Title  string
+	ChatID       string `form:"chatId" json:"ID" xml:"chatId" binding:"required"`
+	UserID       string `form:"userId" json:"UserID" xml:"userId" binding:"required"`
+	Title        string
+	MemberStatus string
 }
 
 func addMemberToChat(c *gin.Context) {
@@ -313,6 +316,7 @@ func addMemberToChat(c *gin.Context) {
 	title, newID, err := models.AddOtherUserToChat(member.ChatID, getUserID(c), member.UserID)
 	if err == nil {
 		member.Title = title
+		member.MemberStatus = "MemberStatusNormal"
 		newAlert := models.Alert{
 			AlertType: "AddedToChat",
 			Data:      member,
@@ -374,6 +378,32 @@ func blockChat(c *gin.Context) {
 		models.SendAlertToOneMember(blockedUserID, newAlert)
 
 		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "member left chat successfully!"})
+		return
+	}
+
+	{
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusNotFound, "message": err.Error()})
+	}
+}
+
+func changeMemberStatus(c *gin.Context) {
+	chat := chat{}
+	if err := c.ShouldBind(&chat); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	_, changedMemberID, err := models.ChangeMemberStatus(chat.ChatID, getUserID(c), chat.MemberID, chat.NewStatus)
+	//fmt.Println(chat)
+	if err == nil {
+		chat.MemberID = changedMemberID
+		chat.OwnerID = getUserID(c)
+		newAlert := models.Alert{
+			AlertType: "MemberStatusChanged",
+			Data:      chat,
+		}
+		models.SendAlertToMember(chat.ChatID, newAlert)
+
+		c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "member status change successfully!"})
 		return
 	}
 

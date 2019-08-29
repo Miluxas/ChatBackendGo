@@ -53,8 +53,18 @@
             var source = new EventSource('/Chat/Stream');
             source.addEventListener('NewMemberAdded', function (e) {
                 var data = JSON.parse(e.data);
+                //console.log(data)
+                addToMemberList(data.ChatId, data);
+
+                //var data = JSON.parse(msg.data);
+                //
+            }, false);
+
+            source.addEventListener('MemberStatusChanged', function (e) {
+                var data = JSON.parse(e.data);
                 console.log(data)
-                addToMemberList(data);
+                changeMemberBadge(data.chatId,data.memberID,data.newStatus)
+                //addToChatList(data);
 
                 //var data = JSON.parse(msg.data);
                 //
@@ -62,7 +72,7 @@
 
             source.addEventListener('AddedToChat', function (e) {
                 var data = JSON.parse(e.data);
-                console.log(data)
+                //console.log(data)
                 addToChatList(data);
 
                 //var data = JSON.parse(msg.data);
@@ -70,7 +80,7 @@
             }, false);
 
             source.addEventListener('JoinedToChat', function (e) {
-                console.log(e)
+                //console.log(e)
                 //var data = JSON.parse(msg.data);
                 ////console.log(data)
             }, false);
@@ -86,20 +96,20 @@
             }, false);
 
             source.addEventListener('MemberLeftChat', function (e) {
-                console.log(e)
+                //console.log(e)
                 //var data = JSON.parse(msg.data);
                 ////console.log(data)
             }, false);
 
             
             source.addEventListener('LeftChat', function (e) {
-                console.log(e);
+                //console.log(e);
 
                 var data = JSON.parse(e.data)
                 document.getElementById(data.chatId).style.setProperty("visibility","collapse")
                 document.getElementById("chatInnerPanelId").className="hidden"
                 document.getElementById("chatInnerMemberPanelId").className="hidden"
-                console.log(data)
+                //console.log(data)
             }, false);
 
             source.addEventListener('NewMessageAdded', function (e) {
@@ -144,8 +154,8 @@
 
                 document.getElementById("memberListId").innerHTML = ""
                 jChat.MemberList.forEach(element => {
-                    if(element.MemberStatus==0)
-                        addToMemberList(element)
+                    //if(element.MemberStatus==0)
+                        addToMemberList(chatId,element)
                 });
                 document.getElementById("messageListId").value = chatId;
                 document.getElementById("badge" + chatId).innerHTML = "";
@@ -178,8 +188,10 @@
             });
         }
 
-        function addToMemberList(item) {
+        function addToMemberList(chatId,item) {
+            console.log(item)
             var node = document.createElement("div");
+            node.style="padding:3px"
             node.className = "list-group-item"
             node.id = item.ID
             var textnode = document.createTextNode(item.UserID);
@@ -187,18 +199,47 @@
             node.appendChild(textnode);
 
             var badgeNode = document.createElement("span");
-            badgeNode.className = "badge";
-            badgeNode.innerText = "";
+            badgeNode.className = "badge badge-light";
+            badgeNode.style="font-size:11px;"
+            if(item.MemberStatus=="MemberStatusNormal"){
+                badgeNode.innerHTML = '<i class="fa fa-unlock" aria-hidden="true"></i>';
+                badgeNode.onclick = function () {
+                    changeMemberStatus(chatId,item.ID,"MemberStatusBlocked");
+                };
+            }
+            else if (item.MemberStatus=="MemberStatusBlocked"){
+                badgeNode.innerHTML = '<i class="fa fa-lock" aria-hidden="true"></i>';
+                badgeNode.onclick = function () {
+                    changeMemberStatus(chatId,item.ID,"MemberStatusNormal");
+                };
+            }
+            
             badgeNode.id = "badge" + item.ID;
             node.appendChild(badgeNode);
 
             document.getElementById("memberListId").appendChild(node);
         }
 
+        function changeMemberBadge(chatId,itemID,itemMemberStatus){
+            var badgeNode=document.getElementById("badge" + itemID)
+            if(itemMemberStatus=="MemberStatusNormal"){
+                badgeNode.innerHTML = '<i class="fa fa-unlock" aria-hidden="true"></i>';
+                badgeNode.onclick = function () {
+                    changeMemberStatus(chatId,itemID,"MemberStatusBlocked");
+                };
+            }
+            else if (itemMemberStatus=="MemberStatusBlocked"){
+                badgeNode.innerHTML = '<i class="fa fa-lock" aria-hidden="true"></i>';
+                badgeNode.onclick = function () {
+                    changeMemberStatus(chatId,itemID,"MemberStatusNormal");
+                };
+            }
+        }
+
         function addToMessageList(item) {
             var node = document.createElement("div");
             node.className = "bd-highlight flex-shrink-0"
-            console.log(item)
+            //console.log(item)
             if(item.OwnerID==currentUserId)
             node.style = "border-width:1px;border-color:grey;border-style:solid;border-radius:4px;margin:2px; margin-left:50px"
             else
@@ -225,8 +266,13 @@
         function addToChatList(item) {
             //console.log(item);
             var node = document.createElement("div");
-            if(item.ChatType=="PEER")
-            node.className = "alert alert-primary d-flex justify-content-between align-items-center";
+            if(item.ChatType=="PEER"){
+                node.className = "alert alert-primary d-flex justify-content-between align-items-center";
+                if(item.MemberList[0].UserID==currentUserId)
+                    item.Title=item.MemberList[1].UserID
+                    else
+                    item.Title=item.MemberList[0].UserID
+            }
             else
             node.className = "alert alert-info d-flex justify-content-between align-items-center";
 
@@ -305,6 +351,11 @@
             });
         }
 
+        function changeMemberStatus(chatId,memberId,newMemberStatus) {
+            var posting = $.post("/Chat/ChangeMemberStatus", { chatId: chatId,memberID:memberId, newStatus:newMemberStatus});
+            posting.done(function (data) {
+            });
+        }
         function blockChat(chatId) {
             var posting = $.post("/Chat/BlockChat", { chatId: chatId });
             posting.done(function (data) {

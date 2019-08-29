@@ -17,9 +17,6 @@ func init() {
 //MemberType is type of member in chat
 type MemberType int
 
-//MemberStatus is status of member in chat
-type MemberStatus int
-
 const (
 	Chat_Type__Peer           string = "PEER"
 	Chat_Type__PUBLIC_GROUP   string = "PUBLIC_GROUP"
@@ -31,11 +28,11 @@ const (
 	MEMBER_TYPE__ADMIN  MemberType = 1
 	MEMBER_TYPE__NORMAL MemberType = 2
 
-	MEMBER_STATUS__NORMAL    MemberStatus = 0
-	MEMBER_STATUS__BLOCKED   MemberStatus = 1
-	MEMBER_STATUS__REQUESTED MemberStatus = 2
-	MEMBER_STATUS__LEFT      MemberStatus = 3
-	MEMBER_STATUS__EXPELED   MemberStatus = 4
+	MEMBER_STATUS__NORMAL    string = "MemberStatusNormal"
+	MEMBER_STATUS__BLOCKED   string = "MemberStatusBlocked"
+	MEMBER_STATUS__REQUESTED string = "MemberStatusRequested"
+	MEMBER_STATUS__LEFT      string = "MemberStatusLeft"
+	MEMBER_STATUS__EXPELED   string = "MemberStatusExpeled"
 )
 
 var ChatList []chat
@@ -63,6 +60,12 @@ var users = []User{User{
 	LastName:  "sol",
 	username:  "solivan",
 	password:  "solivan",
+}, User{
+	ID:        "zohre@e.c",
+	FirstName: "zohre",
+	LastName:  "zoh",
+	username:  "zohre",
+	password:  "zohre",
 }, User{
 	ID:        "ferzin@e.c",
 	FirstName: "ferzin",
@@ -119,7 +122,7 @@ type member struct {
 	UserID       string
 	AddedAt      time.Time
 	MemberType   MemberType
-	MemberStatus MemberStatus
+	MemberStatus string
 }
 
 //User user of the chat system
@@ -296,7 +299,7 @@ func LeaveChat(chatID, currentUserID string) (string, string, error) {
 			return v.UserID, v.ID, nil
 		}
 	}
-	fmt.Println(chat)
+	//fmt.Println(chat)
 
 	return "", "", nil
 }
@@ -314,6 +317,38 @@ func BlockPeerChat(chatID, currentUserID string) (string, string, error) {
 	for ind, v := range chat.MemberList {
 		if v.UserID != currentUserID {
 			chat.MemberList[ind].MemberStatus = MEMBER_STATUS__BLOCKED
+			//fmt.Println(chat)
+			return v.UserID, v.ID, nil
+		}
+	}
+
+	return "", "", nil
+}
+
+//ChangeMemberStatus change member status of user
+func ChangeMemberStatus(chatID, currentUserID, memberID, newMemberStatus string) (string, string, error) {
+	chat, err := getChatFromID(chatID)
+	if err != nil {
+		return "", "", err
+	}
+	if chat.ChatType == Chat_Type__Peer {
+		return "", "", fmt.Errorf("not a group chat")
+	}
+	for _, v := range chat.MemberList {
+		if v.UserID == currentUserID {
+			if v.MemberType != MEMBER_TYPE__ADMIN && v.MemberType != MEMBER_TYPE__OWNER {
+				//fmt.Println("return")
+				return "", "", fmt.Errorf("not a valid user chat")
+			}
+		}
+	}
+	//fmt.Println(memberID)
+	for ind, v := range chat.MemberList {
+
+		//fmt.Println(v)
+		if v.ID == memberID {
+
+			chat.MemberList[ind].MemberStatus = newMemberStatus
 			//fmt.Println(chat)
 			return v.UserID, v.ID, nil
 		}
