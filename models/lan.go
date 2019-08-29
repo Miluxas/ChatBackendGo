@@ -122,6 +122,7 @@ type member struct {
 	MemberStatus MemberStatus
 }
 
+//User user of the chat system
 type User struct {
 	ID        string
 	FirstName string
@@ -173,7 +174,15 @@ func AuthenticateUser(username, password string) User {
 }
 
 //StartNewPeerChat start new peer to peer chat with peerUser
-func StartNewPeerChat(newChatTitle, currentUserID, userID string) string {
+func StartNewPeerChat(newChatTitle, currentUserID, userID string) (string, error) {
+
+	for _, v := range ChatList {
+		if v.ChatType == Chat_Type__Peer && ((v.MemberList[0].UserID == userID && v.MemberList[1].UserID == currentUserID) ||
+			(v.MemberList[1].UserID == userID && v.MemberList[0].UserID == currentUserID)) {
+			return "", fmt.Errorf("peer chat with this member is exist")
+		}
+	}
+
 	newMember := member{
 		ID:           createUniqID(),
 		UserID:       userID,
@@ -201,7 +210,7 @@ func StartNewPeerChat(newChatTitle, currentUserID, userID string) string {
 	newChat.addMember(&newMember)
 
 	ChatList = append(ChatList, newChat)
-	return newChatID
+	return newChatID, nil
 }
 
 //StartNewGroupChat start new group chat
@@ -229,23 +238,24 @@ func StartNewGroupChat(newChatTitle, currentUserID, chatType string) string {
 }
 
 //SendMessageToChat add message to a chat
-func SendMessageToChat(chatID, currentUserID, newMessage string) (string, error) {
+func SendMessageToChat(chatID, currentUserID, newMessage string) (time.Time, string, error) {
 
 	chat, err := getChatFromID(chatID)
 	if err != nil {
-		return "", err
+		return time.Now(), "", err
 	}
 
 	newID := createUniqID()
+	cAt := time.Now()
 	newMes := message{
 		ID:       newID,
 		Content:  newMessage,
-		CreateAt: time.Now(),
+		CreateAt: cAt,
 		OwnerID:  currentUserID,
 	}
 	chat.MessageList = append(chat.MessageList, newMes)
 
-	return newID, nil
+	return cAt, newID, nil
 }
 
 //JoinToChat join current user to a chat
@@ -287,6 +297,27 @@ func LeaveChat(chatID, currentUserID string) (string, string, error) {
 		}
 	}
 	fmt.Println(chat)
+
+	return "", "", nil
+}
+
+//BlockPeerChat leave user from a chat
+func BlockPeerChat(chatID, currentUserID string) (string, string, error) {
+
+	chat, err := getChatFromID(chatID)
+	if err != nil {
+		return "", "", err
+	}
+	if chat.ChatType != Chat_Type__Peer {
+		return "", "", fmt.Errorf("not a peer chat")
+	}
+	for ind, v := range chat.MemberList {
+		if v.UserID != currentUserID {
+			chat.MemberList[ind].MemberStatus = MEMBER_STATUS__BLOCKED
+			//fmt.Println(chat)
+			return v.UserID, v.ID, nil
+		}
+	}
 
 	return "", "", nil
 }

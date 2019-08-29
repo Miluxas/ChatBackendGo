@@ -10,6 +10,7 @@ p, user, /Chat/AddMemberToChat, POST
 p, user, /Chat/GetChat, POST
 p, user, /Chat/GetChatList , POST
 p, user, /Chat/LeaveFromChat , POST
+p, user, /Chat/BlockChat , POST
 p, user, /Chat/Stream, GET
 
 g, admin@e.c, user
