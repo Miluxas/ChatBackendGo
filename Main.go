@@ -301,10 +301,11 @@ func joinToChat(c *gin.Context) {
 /*																				*/
 /********************************************************************************/
 type member struct {
-	ChatID       string `form:"chatId" json:"ID" xml:"chatId" binding:"required"`
+	ChatID       string `form:"chatId" json:"chatId" xml:"chatId" binding:"required"`
 	UserID       string `form:"userId" json:"UserID" xml:"userId" binding:"required"`
 	Title        string
 	MemberStatus string
+	ID           string
 }
 
 func addMemberToChat(c *gin.Context) {
@@ -317,6 +318,7 @@ func addMemberToChat(c *gin.Context) {
 	if err == nil {
 		member.Title = title
 		member.MemberStatus = "MemberStatusNormal"
+		member.ID = newID
 		newAlert := models.Alert{
 			AlertType: "AddedToChat",
 			Data:      member,

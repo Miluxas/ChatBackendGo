@@ -53,8 +53,8 @@
             var source = new EventSource('/Chat/Stream');
             source.addEventListener('NewMemberAdded', function (e) {
                 var data = JSON.parse(e.data);
-                //console.log(data)
-                addToMemberList(data.ChatId, data);
+                console.log(data)
+                addToMemberList(data.chatId, data);
 
                 //var data = JSON.parse(msg.data);
                 //
