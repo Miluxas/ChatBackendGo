@@ -18,23 +18,37 @@ func init() {
 type MemberType int
 
 const (
-	Chat_Type__Peer           string = "PEER"
-	Chat_Type__PUBLIC_GROUP   string = "PUBLIC_GROUP"
-	Chat_Type__PRIVATE_GROUP  string = "PRIVATE_GROUP"
-	Chat_Type__PUBLIC_CANNAL  string = "PUBLIC_CANNAL"
-	Chat_Type__PRIVATE_CANNAL string = "PRIVATE_CANNAL"
+	// ChatTypePeer use for peer to peer chat
+	ChatTypePeer string = "PEER"
+	// ChatTypePublicGroup use for public group
+	ChatTypePublicGroup string = "PUBLIC_GROUP"
+	// ChatTypePrivateGroup use for private group
+	ChatTypePrivateGroup string = "PRIVATE_GROUP"
+	// ChatTypePublicCannal use for public cannal
+	ChatTypePublicCannal string = "PUBLIC_CANNAL"
+	// ChatTypePrivateCannal use for private cannal
+	ChatTypePrivateCannal string = "PRIVATE_CANNAL"
 
-	MEMBER_TYPE__OWNER  MemberType = 0
-	MEMBER_TYPE__ADMIN  MemberType = 1
-	MEMBER_TYPE__NORMAL MemberType = 2
+	// MemberTypeOwner owner of chat
+	MemberTypeOwner MemberType = 0
+	// MemberTypeAamin admin of a group chat
+	MemberTypeAamin MemberType = 1
+	// MemberTypeNormal normal member of group chat
+	MemberTypeNormal MemberType = 2
 
-	MEMBER_STATUS__NORMAL    string = "MemberStatusNormal"
-	MEMBER_STATUS__BLOCKED   string = "MemberStatusBlocked"
-	MEMBER_STATUS__REQUESTED string = "MemberStatusRequested"
-	MEMBER_STATUS__LEFT      string = "MemberStatusLeft"
-	MEMBER_STATUS__EXPELED   string = "MemberStatusExpeled"
+	// MemberStatusNormal normal member
+	MemberStatusNormal string = "MemberStatusNormal"
+	// MemberStatusBlocked blocked member
+	MemberStatusBlocked string = "MemberStatusBlocked"
+	// MemberStatusRequested not accepted member
+	MemberStatusRequested string = "MemberStatusRequested"
+	// MemberStatusLeft left member
+	MemberStatusLeft string = "MemberStatusLeft"
+	// MemberStatusExpeled expeled member
+	MemberStatusExpeled string = "MemberStatusExpeled"
 )
 
+// ChatList list of all chat
 var ChatList []chat
 var users = []User{User{
 	ID:        "admin@e.c",
@@ -94,7 +108,7 @@ func (ch *chat) addMember(newMem *member) {
 	}
 
 	if !isMemberExist {
-		if mem.MemberStatus != MEMBER_STATUS__LEFT {
+		if mem.MemberStatus != MemberStatusLeft {
 			ch.MemberList = append(ch.MemberList, *newMem)
 		}
 	}
@@ -102,7 +116,7 @@ func (ch *chat) addMember(newMem *member) {
 
 func (ch *chat) findMember(userID string) bool {
 	for _, v := range ch.MemberList {
-		if v.UserID == userID && v.MemberStatus == MEMBER_STATUS__NORMAL {
+		if v.UserID == userID && v.MemberStatus == MemberStatusNormal {
 			//fmt.Println(v)
 			return true
 		}
@@ -180,7 +194,7 @@ func AuthenticateUser(username, password string) User {
 func StartNewPeerChat(newChatTitle, currentUserID, userID string) (string, error) {
 
 	for _, v := range ChatList {
-		if v.ChatType == Chat_Type__Peer && ((v.MemberList[0].UserID == userID && v.MemberList[1].UserID == currentUserID) ||
+		if v.ChatType == ChatTypePeer && ((v.MemberList[0].UserID == userID && v.MemberList[1].UserID == currentUserID) ||
 			(v.MemberList[1].UserID == userID && v.MemberList[0].UserID == currentUserID)) {
 			return "", fmt.Errorf("peer chat with this member is exist")
 		}
@@ -190,22 +204,22 @@ func StartNewPeerChat(newChatTitle, currentUserID, userID string) (string, error
 		ID:           createUniqID(),
 		UserID:       userID,
 		AddedAt:      time.Now(),
-		MemberType:   MEMBER_TYPE__NORMAL,
-		MemberStatus: MEMBER_STATUS__NORMAL,
+		MemberType:   MemberTypeNormal,
+		MemberStatus: MemberStatusNormal,
 	}
 
 	ownerMember := member{
 		ID:           createUniqID(),
 		UserID:       currentUserID,
 		AddedAt:      time.Now(),
-		MemberType:   MEMBER_TYPE__OWNER,
-		MemberStatus: MEMBER_STATUS__NORMAL,
+		MemberType:   MemberTypeOwner,
+		MemberStatus: MemberStatusNormal,
 	}
 	newChatID := createUniqID()
 	newChat := chat{
 		ID:       newChatID,
 		Title:    newChatTitle,
-		ChatType: Chat_Type__Peer,
+		ChatType: ChatTypePeer,
 		CreateAt: time.Now(),
 	}
 
@@ -223,8 +237,8 @@ func StartNewGroupChat(newChatTitle, currentUserID, chatType string) string {
 		ID:           createUniqID(),
 		UserID:       currentUserID,
 		AddedAt:      time.Now(),
-		MemberType:   MEMBER_TYPE__OWNER,
-		MemberStatus: MEMBER_STATUS__NORMAL,
+		MemberType:   MemberTypeOwner,
+		MemberStatus: MemberStatusNormal,
 	}
 	newChatID := createUniqID()
 	newChat := chat{
@@ -273,12 +287,13 @@ func JoinToChat(chatID, currentUserID string) (string, error) {
 		ID:           newID,
 		UserID:       currentUserID,
 		AddedAt:      time.Now(),
-		MemberType:   MEMBER_TYPE__NORMAL,
-		MemberStatus: MEMBER_STATUS__NORMAL,
+		MemberType:   MemberTypeNormal,
+		MemberStatus: MemberStatusNormal,
 	}
 
-	if chat.ChatType == Chat_Type__PRIVATE_CANNAL || chat.ChatType == Chat_Type__PRIVATE_GROUP {
-		newMember.MemberStatus = MEMBER_STATUS__REQUESTED
+	if chat.ChatType == ChatTypePrivateCannal || chat.ChatType ==
+		ChatTypePrivateGroup {
+		newMember.MemberStatus = MemberStatusRequested
 	}
 
 	chat.addMember(&newMember)
@@ -294,7 +309,7 @@ func LeaveChat(chatID, currentUserID string) (string, string, error) {
 	}
 	for ind, v := range chat.MemberList {
 		if v.UserID == currentUserID {
-			chat.MemberList[ind].MemberStatus = MEMBER_STATUS__LEFT
+			chat.MemberList[ind].MemberStatus = MemberStatusLeft
 			//fmt.Println(chat)
 			return v.UserID, v.ID, nil
 		}
@@ -311,12 +326,12 @@ func BlockPeerChat(chatID, currentUserID string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	if chat.ChatType != Chat_Type__Peer {
+	if chat.ChatType != ChatTypePeer {
 		return "", "", fmt.Errorf("not a peer chat")
 	}
 	for ind, v := range chat.MemberList {
 		if v.UserID != currentUserID {
-			chat.MemberList[ind].MemberStatus = MEMBER_STATUS__BLOCKED
+			chat.MemberList[ind].MemberStatus = MemberStatusBlocked
 			//fmt.Println(chat)
 			return v.UserID, v.ID, nil
 		}
@@ -331,12 +346,12 @@ func ChangeMemberStatus(chatID, currentUserID, memberID, newMemberStatus string)
 	if err != nil {
 		return "", "", err
 	}
-	if chat.ChatType == Chat_Type__Peer {
+	if chat.ChatType == ChatTypePeer {
 		return "", "", fmt.Errorf("not a group chat")
 	}
 	for _, v := range chat.MemberList {
 		if v.UserID == currentUserID {
-			if v.MemberType != MEMBER_TYPE__ADMIN && v.MemberType != MEMBER_TYPE__OWNER {
+			if v.MemberType != MemberTypeAamin && v.MemberType != MemberTypeOwner {
 				//fmt.Println("return")
 				return "", "", fmt.Errorf("not a valid user chat")
 			}
@@ -369,8 +384,8 @@ func AddOtherUserToChat(chatID, currentUserID, userID string) (string, string, e
 		ID:           newID,
 		UserID:       userID,
 		AddedAt:      time.Now(),
-		MemberType:   MEMBER_TYPE__NORMAL,
-		MemberStatus: MEMBER_STATUS__NORMAL,
+		MemberType:   MemberTypeNormal,
+		MemberStatus: MemberStatusNormal,
 	}
 
 	chat.addMember(&newMember)
@@ -384,7 +399,7 @@ func SendAlertToMember(chatID string, newAlert interface{}) {
 		return
 	}
 	for _, v := range chat.MemberList {
-		if v.MemberStatus == MEMBER_STATUS__NORMAL {
+		if v.MemberStatus == MemberStatusNormal {
 			UserChannel(v.UserID).Submit(newAlert)
 		}
 	}
@@ -414,7 +429,7 @@ func GetChat(chatID, currentUserID string) (string, error) {
 	if !isUserMemberOfChat {
 		return "", fmt.Errorf("User isn't member of chat")
 	}
-	if chat.ChatType == Chat_Type__Peer {
+	if chat.ChatType == ChatTypePeer {
 		if chat.MemberList[0].UserID == currentUserID {
 			chat.Title = chat.MemberList[1].UserID
 		} else {
